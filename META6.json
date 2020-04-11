@@ -15,7 +15,7 @@
     "Excel" : "lib/Excel.rakumod"
   },
   "resources" : [ ],
-  "source-url" : "https://github.com/tbrowder/Excel-Text-Template-Raku.git",
+  "source-url" : "https://github.com/tbrowder/Excel-Raku.git",
   "tags" : [ ],
   "test-depends" : [
     "Test::META"
