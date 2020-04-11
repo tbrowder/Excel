@@ -2,9 +2,9 @@
 
 # Excel
 
-## A Raku module to create or use Excel xlsx files.
+**A Raku module to create or use Excel xlsx files**
 
-## [Note this module replaces the short-lived module Excel::Text::Template.]
+[Note this module replaces the short-lived module *Excel::Text::Template*.]
 
 The module can:
 
