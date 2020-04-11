@@ -1,0 +1,3 @@
+The development will be done in stages and
+the prog and data files used or created will
+be in subdirs 'stage-1', ..., 'stage-N'. 

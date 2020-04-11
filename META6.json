@@ -1,0 +1,24 @@
+{
+  "auth" : "github:tbrowder",
+  "authors" : [
+    "Tom Browder"
+  ],
+  "build-depends" : [ ],
+  "depends" : [
+    "Inline::Perl5"
+  ],
+  "description" : "Provides ability to work with Excel workbooks",
+  "license" : "Artistic-2.0",
+  "name" : "Excel",
+  "perl" : "6*",
+  "provides" : {
+    "Excel" : "lib/Excel.rakumod"
+  },
+  "resources" : [ ],
+  "source-url" : "https://github.com/tbrowder/Excel-Text-Template-Raku.git",
+  "tags" : [ ],
+  "test-depends" : [
+    "Test::META"
+  ],
+  "version" : "0.0.1"
+}

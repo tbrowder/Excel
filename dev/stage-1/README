@@ -1,0 +1,16 @@
+In stage 1 we will start with an Excel file hand-created on Win 10 in
+a format to be a template for producing Excel files in the same format
+but substituting different values in certain cells.
+
+This test is a strict use of Excel files with Raku/Perl wrapping.
+
+Note that no Perl module on Linux can extract the formula from an
+existing Excel xlsx file so we will try a hybrid solution:
+
++ Design, in Excel, the template in the format we want. Insert
+  place-holder text strings as values which the xlxs reader can
+  extract. Those strings will be translated by the Raku wrapper and
+  inserted in the output xlsx file.
+
++ See test template file 'hand-generated-template.xlsx' as input. That
+  file converts to cvs with "ssconvert f.xlxs f.cvs" as:
