@@ -20,7 +20,9 @@ to generate Excel files. It is a WIP and has little working code
 at the moment. If you are interested in the concept, please
 star the project, follow it, and file a feature request issue.
 
-The project will use several Perl modules which will have to
+Currently working code is in the "dev" directory.
+
+The project uses several Perl modules which will have to
 be installed for the distro to work (I use `cpanm` for that):
 
 + Perl modules required:
@@ -56,6 +58,19 @@ attribute pairs (using a syntax similar to `Raku`s Pairs) following the cell con
 # Another comment and more rows following
 |  # this is a row with two empty cells
 ```
+
+CREDITS
+=======
+
+Many thanks to all the Perl authors whose modules I've used
+over the last 25+ years, including all the well-known luminaries
+Larry Wall and Damian Conway. But the workhorse modules I used
+most heavily over 15 years in my civilian career were those
+by **John McNamara**, the most recent incarnation of his great
+Excel modules being Excel::Writer::XLSX.
+
+Of course I couldn't use John's work without the excellent
+Raku module Inline::Perl5 whose original author is **Stefan Seifert**.
 
 AUTHOR
 ======
