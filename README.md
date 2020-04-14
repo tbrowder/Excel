@@ -15,6 +15,10 @@ The module can:
 Planned:
 
 * Use a text file as a template to create new Excel xlsx files
+* Allow user-defined call-back functions to aid the templating
+  process
+* Use a TOML-format config file to input values defining a
+  templated project
 
 ## DESCRIPTION
 

@@ -5,6 +5,7 @@
   ],
   "build-depends" : [ ],
   "depends" : [
+    "Config::TOML",
     "Inline::Perl5"
   ],
   "description" : "Provides ability to work with Excel workbooks",
