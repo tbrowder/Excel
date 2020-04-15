@@ -17,7 +17,7 @@ Planned:
 * Use a text file as a template to create new Excel xlsx files
 * Allow user-defined call-back functions to aid the templating
   process
-* Use a TOML-format config file to input values defining a
+* Use a TOML-format configuration file to input values defining a
   templated project
 
 ## DESCRIPTION
@@ -36,6 +36,40 @@ be installed for the distro to work (I use `cpanm` for that):
 
     + `Excel::Writer::XLSX`
     + `Spreadsheet::XLSX`
+
+## DATA FLOW
+
+The major use case is designed to
+take input consisting of one or more individual
+data sets (such as the rows of a database,
+CSV file, or spreadsheet) and convert
+each row into an Excel workbook via
+a template which describes the mapping
+from input row columns to table cells
+in the output Excel worksheet.
+
+## USE CASES
+
+Typical row-oriented data sets might be:
+
+* a teacher's student list
+* a manager's employee list 
+* a research scientist's experimental results
+* a financial analyst's list of security data
+
+## INITIAL VERSION
+
+The first working version will provide:
+
+* Excel and data readers
+
+* Excel and text template readers
+
+* Excel writers 
+
+    * a single workbook per data set
+
+    * a single workbook with a single worksheet per data set
 
 ## GENESIS
 
@@ -65,6 +99,7 @@ attribute pairs (using a syntax similar to `Raku`s Pairs) following the cell con
 # Another comment and more rows following
 |  # this is a row with two empty cells
 ```
+
 
 CREDITS
 =======
