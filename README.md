@@ -9,7 +9,7 @@
 The module can:
 
 * Read an existing Microsoft Excel xlsx file
-* Create Excel xlxs files
+* Create Excel xlsx files
 * Use an Excel file as a template to create new Excel xlsx files
 
 Planned:
