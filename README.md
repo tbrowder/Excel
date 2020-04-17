@@ -4,6 +4,10 @@
 
 **A Raku module to create or use Excel xlsx files**
 
+# UPDATE 2020-04-18
+
+**SEE WIP EXCEL TEMPLATE IN EXAMPLES DIRECTORY**
+
 [Note this module replaces the short-lived module *Excel::Text::Template*.]
 
 The module can:
@@ -84,7 +88,7 @@ the form of the template.
 
 I am just starting, but I'm looking at a template format something like
 this, one line per row, cells separated by pipes (`|`), key/value
-attribute pairs (using a syntax similar to `Raku`s Pairs) following the cell content:
+attribute pairs (using a syntax similar to `Raku`'s Pairs) following the cell content:
 
 ``` Raku
 # This is a comment. The following row describes one xlsx row with four columns (the
@@ -100,11 +104,24 @@ attribute pairs (using a syntax similar to `Raku`s Pairs) following the cell con
 |  # this is a row with two empty cells
 ```
 
+As I work on my real-world project (using an Excel template)
+I realize the cell-mapping DSL needs to be a little more 
+complex to be able to specify where the cell data are coming
+from and where are they to be written. So far I am using
+the first column of my template for "directives" that
+are not written to the output file. Among the directives
+I'm using are special row identifiers for grouping
+data lines if needed as for my tax case where I
+have multiple security buys for the same security over
+the years, one line for each lot.
+
+See the examples directory for my Excel template as it
+progresse.
 
 CREDITS
 =======
 
-Many thanks to all the Perl authors whose modules I've used
+Many thanks to all the Perl and Raku authors whose modules I've used
 over the last 25+ years, including all the well-known luminaries
 Larry Wall and Damian Conway. But the workhorse modules I used
 most heavily over 15 years in my civilian career were those
