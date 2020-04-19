@@ -4,7 +4,7 @@
 
 **A Raku module to create or use Excel xlsx files**
 
-# UPDATE 2020-04-19
+# UPDATE 2020-04-18
 
 **SEE WIP EXCEL TEMPLATE IN EXAMPLES DIRECTORY**
 
@@ -18,6 +18,7 @@ The module can:
 
 Planned:
 
+* Use a text file as a template to create new Excel xlsx files
 * Allow user-defined call-back functions to aid the templating
   process
 * Use a TOML-format configuration file to input values defining a
@@ -25,7 +26,7 @@ Planned:
 
 ## DESCRIPTION
 
-This module provides the capability of using Excel templates
+This module provides the capability of using Excel and text templates
 to generate Excel files. It is a WIP and has little working code
 at the moment. If you are interested in the concept, please
 star the project, follow it, and file a feature request issue.
@@ -64,40 +65,58 @@ Typical row-oriented data sets might be:
 
 The first working version will provide:
 
-* Excel and CSV data readers
+* Excel and data readers
 
-* Excel template reader
+* Excel and text template readers
 
-* Excel writer
+* Excel writers 
 
     * a single workbook per data set
 
     * a single workbook with a single worksheet per data set
 
-## Using a template
-
-After diving in to my project I've decided the original
-direction was too complicated for my use. Now I'm
-heading toward a process like this:
-
-1. Design the Excel template to look just like I want it to
-   look and use dummy data in the desired cells and format.
-   Add real exlanatory text and format as desired.
-   Include working formulas using dummy data and
-   format and locate result cells as desired.
-  
-2. Use additional worksheets in the template to define
-   mappings between
-   the cells in the input, template, and output 
-   files. 
-
-
-
-
-
 ## GENESIS
 
-See the original README.md in the "old" subdir.
+This project started when I was trying to automate creating forms for
+my tax return. I have a need to generate multiple workbooks, one
+worksheet per workbook, from a template, and am designing my own
+format for that purpose. I will use the `Raku` language to parse the
+text-file template, then, with the aid of the `Raku` module
+`Inline::Perl5`, I will read my xlsx data files with one of the Perl
+xlsx readers and then use this module to write new, filtered files in
+the form of the template.
+
+I am just starting, but I'm looking at a template format something like
+this, one line per row, cells separated by pipes (`|`), key/value
+attribute pairs (using a syntax similar to `Raku`'s Pairs) following the cell content:
+
+``` Raku
+# This is a comment. The following row describes one xlsx row with four columns (the
+# first column being empty) and it has an ending comment.
+# Comments are stripped to the end-of-line eol before parsing the row.
+
+| some text | 5.26 | :formula<some formula> :color<red> :width(2) # comment...
+
+# Empty rows are ignored, the worksheet will have all rows padded with empty cells
+# to the maximum number of cells found on any row
+
+# Another comment and more rows following
+|  # this is a row with two empty cells
+```
+
+As I work on my real-world project (using an Excel template)
+I realize the cell-mapping DSL needs to be a little more 
+complex to be able to specify where the cell data are coming
+from and where are they to be written. So far I am using
+the first column of my template for "directives" that
+are not written to the output file. Among the directives
+I'm using are special row identifiers for grouping
+data lines if needed as for my tax case where I
+have multiple security buys for the same security over
+the years, one line for each lot.
+
+See the examples directory for my Excel template as it
+progresse.
 
 CREDITS
 =======
