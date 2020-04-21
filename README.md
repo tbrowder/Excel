@@ -37,26 +37,23 @@ be installed for the distro to work (I use `cpanm` for that):
 
 + Perl modules required:
 
-    + `Excel::Writer::XLSX`
-    + `Spreadsheet::XLSX`
+    + `Excel::Writer::XLSX` # write files
+    + `Spreadsheet::XLSX`   # read files
 
 ## DATA FLOW
 
-The major use case is designed to
-take input consisting of one or more individual
-data sets (such as the rows of a database,
-CSV file, or spreadsheet) and convert
-each row into an Excel workbook via
-a template which describes the mapping
-from input row columns to table cells
-in the output Excel worksheet.
+The major use case is designed to take input consisting of one or more
+individual data sets (such as the rows of a database, CSV file, or
+spreadsheet) and convert each row into an Excel workbook via a
+template which describes the mapping from input row columns to table
+cells in the output Excel worksheet.
 
 ## USE CASES
 
 Typical row-oriented data sets might be:
 
 * a teacher's student list
-* a manager's employee list 
+* a manager's employee list
 * a research scientist's experimental results
 * a financial analyst's list of security data
 
@@ -76,24 +73,17 @@ The first working version will provide:
 
 ## Using a template
 
-After diving in to my project I've decided the original
-direction was too complicated for my use. Now I'm
-heading toward a process like this:
+After diving in to my project I've decided the original direction was
+too complicated for my use. Now I'm heading toward a process like
+this:
 
-1. Design the Excel template to look just like I want it to
-   look and use dummy data in the desired cells and format.
-   Add real exlanatory text and format as desired.
-   Include working formulas using dummy data and
-   format and locate result cells as desired.
-  
-2. Use additional worksheets in the template to define
-   mappings between
-   the cells in the input, template, and output 
-   files. 
+1. Design the Excel template to look just like I want it to look and
+   use dummy data in the desired cells and format.  Add real
+   exlanatory text and format as desired.  Include working formulas
+   using dummy data and format and locate result cells as desired.
 
-
-
-
+2. Use additional worksheets in the template to define mappings
+   between the cells in the input, template, and output files.
 
 ## GENESIS
 
@@ -103,14 +93,14 @@ CREDITS
 =======
 
 Many thanks to all the Perl and Raku authors whose modules I've used
-over the last 25+ years, including all the well-known luminaries
-Larry Wall and Damian Conway. But the workhorse modules I used
-most heavily over 15 years in my civilian career were those
-by **John McNamara**, the most recent incarnation of his great
-Excel modules being Excel::Writer::XLSX.
+over the last 25+ years, including all the well-known luminaries Larry
+Wall and Damian Conway. But the workhorse modules I used most heavily
+over 15 years in my civilian career were those by **John McNamara**,
+the most recent incarnation of his great Excel modules being
+Excel::Writer::XLSX.
 
-Of course I couldn't use John's work without the excellent
-Raku module Inline::Perl5 whose original author is **Stefan Seifert**.
+Of course I couldn't use John's work without the excellent Raku module
+Inline::Perl5 whose original author is **Stefan Seifert**.
 
 AUTHOR
 ======
