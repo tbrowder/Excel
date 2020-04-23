@@ -29,27 +29,51 @@ sub copy-xlsx($fin, $fout, :$debug) is export {
 sub parse-xlsx($fnam, :$wsnum = 0, :$wsnam, :$debug) is export {
     # Returns an array of rows which are arrays of columns of
     # cell values.
-    my @rowcols;
+    my @rowcols = [];
 
     use Spreadsheet::ParseXLSX:from<Perl5>;
     my $parser = Spreadsheet::ParseXLSX.new;
-    my $wb     = $parser.parse: $fnam;
-    for $wb.worksheets -> $ws {
-        my ($row-min, $row-max) = $ws.row_range;
-        my ($col-min, $col-max) = $ws.col_range;
+    my $wb     = $parser.parse($fnam)
+              || die "FATAL: File $fnam can't be parsed";
+    note "DEBUG file: {$wb<File>}" if $debug;
+    my $wsc = $wb.worksheet_count;
+    note "DEBUG worksheet count: {$wsc}" if $debug;
 
-        for $row-min .. $row-max -> $row {
-            for $col-min .. $col-max -> $col {
-                my $cell  = $ws.get_cell: $row, $col;
-                next unless $$cell;
-
-                my $value = $cell.value;
-                my $unfmt = $cell.unformatted;
-                my $equat = $cell.Formula;
-            }
+    my $sn = 0;
+    for 0..^$wsc -> $wsn {
+        my $ws = $wb.worksheet($wsn); # can also use the name if need be
+        if $sn && $debug {
+            note "DEBUG: exiting after first worksheet";
+            exit;
         }
-
+        if $debug {
+            note "DEBUG: got worksheet $sn...";
+        }
+        my ($row-min, $row-max) = $ws.row_range;
+        if $debug {
+            note "DEBUG: row min/max: {$row-min}/{$row-max}";
+        }
+        my ($col-min, $col-max) = $ws.col_range;
+        for $row-min ... $row-max -> $row {
+            my @cols = [];
+            for $col-min ... $col-max -> $col {
+                my ($value, $unfmt, $equat) = '', '', '';
+                my $cell  = $ws.get_cell($row, $col);
+                unless $cell.defined {
+                    $cell = '';
+                    @cols.push: $value;
+                    next;
+                }
+                $value = $cell.value;
+                $unfmt = $cell.unformatted;
+                #$equat = $cell.Formula;
+                @cols.push: $value;
+            }
+            @rowcols.push: @cols;
+        }
+        ++$sn;
     }
+    return @rowcols;
 }
 
 sub read-xlsx($fnam, :$wsnum = 0, :$wsnam, :$debug) is export {
@@ -85,7 +109,7 @@ sub read-xlsx($fnam, :$wsnum = 0, :$wsnam, :$debug) is export {
 
     note "Sheet name: $wsn" if $debug;
     for 0 .. $ws<MaxRow> -> $row {
-        my @cols;
+        my @cols = []; # makes it an array, a single object
         for 0 .. $ws<MaxCol> -> $col {
             my $cell = $ws<Cells>[$row][$col];
             #Dump({$cell}) if $debug;
@@ -210,7 +234,7 @@ sub write-xlsx-values($fnam, @rowcols, :$debug) is export {
     my $i = 0;
     for @rowcols -> $row {
         my $j = 0;
-        for @($row) -> $col {
+        for $row -> $col {
             my $val = @rowcols[$i][$j];
             note "DEBUG: cell[$i][$j] = '$val'" if $debug;
             ++$j;
