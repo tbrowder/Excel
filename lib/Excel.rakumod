@@ -1,6 +1,6 @@
 unit module Excel;
 
-#use Data::Dump;
+use Data::Dump;
 
 =begin comment
 # Perl modules
@@ -26,15 +26,44 @@ sub copy-xlsx($fin, $fout, :$debug) is export {
 }
 =end comment
 
+sub parse-xlsx($fnam, :$wsnum = 0, :$wsnam, :$debug) is export {
+    # Returns an array of rows which are arrays of columns of
+    # cell values.
+    my @rowcols;
+
+    use Spreadsheet::ParseXLSX:from<Perl5>;
+    my $parser = Spreadsheet::ParseXLSX.new;
+    my $wb     = $parser.parse: $fnam;
+    for $wb.worksheets -> $ws {
+        my ($row-min, $row-max) = $ws.row_range;
+        my ($col-min, $col-max) = $ws.col_range;
+
+        for $row-min .. $row-max -> $row {
+            for $col-min .. $col-max -> $col {
+                my $cell  = $ws.get_cell: $row, $col;
+                next unless $$cell;
+
+                my $value = $cell.value;
+                my $unfmt = $cell.unformatted;
+                my $equat = $cell.Formula;
+            }
+        }
+
+    }
+}
+
 sub read-xlsx($fnam, :$wsnum = 0, :$wsnam, :$debug) is export {
     # Returns an array of rows which are arrays of columns of
-    # cell values. 
+    # cell values.
     my @rowcols;
 
     use Spreadsheet::XLSX:from<Perl5>;
-    use Data::Dump:from<Perl5> <dump>;
+    my $wb = Spreadsheet::XLSX.new: $fnam;
 
-    my $wb  = Spreadsheet::XLSX.new: $fnam;
+    for $wb.keys.sort -> $k {
+        note "DEBUG: found \$wb key: $k";
+    }
+
     my $ws;
     if $wsnam {
         # a hack
@@ -42,6 +71,10 @@ sub read-xlsx($fnam, :$wsnum = 0, :$wsnam, :$debug) is export {
     }
     else {
         $ws = $wb<Worksheet>[$wsnum];
+    }
+    for $ws.keys.sort -> $k {
+        note $k.^name;
+        note "DEBUG: found \$ws key: $k";
     }
 
     my $wsn = $ws<Name>;
@@ -56,7 +89,7 @@ sub read-xlsx($fnam, :$wsnum = 0, :$wsnam, :$debug) is export {
         for 0 .. $ws<MaxCol> -> $col {
             my $cell = $ws<Cells>[$row][$col];
             #Dump({$cell}) if $debug;
-            dd $cell if $debug;
+            #dd $cell if $debug;
             my $val  = $cell<Val> // ''; # Nil?
             # could be a Blob
             if $val ~~ Blob {
