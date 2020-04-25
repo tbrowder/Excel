@@ -1,12 +1,52 @@
 unit module Excel;
 
-use Data::Dump;
+=begin pod
+
+
+=end pod
+
+
+
+
+#use Data::Dump;
+use Data::Dump::Tree;
+
+=begin pod
+
+The following classes are used to capture XLSX workbook data to use
+with the Perl XLSX writer C<Excel::Writer::XLSX>.
+
+=end pod
+
+
+class Cell is export {
+    has $.row; # defined in constructor
+    has $.col; # defined in constructor
+    has $.A1;  # defined in constructor
+    has $.value       is rw = '';
+    has $.unformatted is rw = '';
+    has $.formula     is rw = '';
+    has $.type        is rw = '';
+    has %.attrs       is rw = {};
+}
+
+class Worksheet is export {
+    has $.name;   # defined in constructor
+    has $.number; # defined in constructor
+    has @.rowcols is rw = [];
+    has %.attrs   is rw = {};
+}
+
+class Workbook is export {
+    has $.filename; # defined in constructor
+    has @.worksheets is rw = [];
+    has %.attrs      is rw = {};
+}
 
 =begin comment
 # Perl modules
-use File::LibMagic:from<Perl5>;
-#use Excel::Writer::XLSX:from<Perl5>;
-use Spreadsheet::XLSX:from<Perl5>;
+use Excel::Writer::XLSX:from<Perl5>;
+use Spreadsheet::ParseXLSX:from<Perl5>;
 # older subs used with CVS::Parser
 =end comment
 
@@ -22,26 +62,32 @@ sub copy-xlsx($fin, $fout, :$debug) is export {
         my $wsn = $ws<Name>;
         note "Sheet name: $wsn" if $debug;
     }
-
 }
 =end comment
 
-sub parse-xlsx($fnam, :$wsnum = 0, :$wsnam, :$debug) is export {
+sub parse-xlsx($filename, :$wsnum = 0, :$wsnam, :$debug) is export {
     # Returns an array of rows which are arrays of columns of
-    # cell values.
+    # Cell objects.
     my @rowcols = [];
 
     use Spreadsheet::ParseXLSX:from<Perl5>;
     my $parser = Spreadsheet::ParseXLSX.new;
-    my $wb     = $parser.parse($fnam)
-              || die "FATAL: File $fnam can't be parsed";
+    my $wb     = $parser.parse($filename)
+              || die "FATAL: File $filename can't be parsed";
     note "DEBUG file: {$wb<File>}" if $debug;
     my $wsc = $wb.worksheet_count;
     note "DEBUG worksheet count: {$wsc}" if $debug;
 
+    my $Wb = Workbook.new: :$filename;
+
     my $sn = 0;
-    for 0..^$wsc -> $wsn {
-        my $ws = $wb.worksheet($wsn); # can also use the name if need be
+    for 0..^$wsc -> $wsnum {
+        my $ws  = $wb.worksheet($wsnum); # can also use the name if need be
+        my $wsn = $ws.get_name;
+        my $Ws = Worksheet.new: :number($wsnum), :name($wsn);
+
+        $Wb.worksheets.push: $Ws;
+
         if $sn && $debug {
             note "DEBUG: exiting after first worksheet";
             exit;
@@ -54,28 +100,36 @@ sub parse-xlsx($fnam, :$wsnum = 0, :$wsnam, :$debug) is export {
             note "DEBUG: row min/max: {$row-min}/{$row-max}";
         }
         my ($col-min, $col-max) = $ws.col_range;
-        for $row-min ... $row-max -> $row {
+        ROW: for $row-min ... $row-max -> $row {
             my @cols = [];
-            for $col-min ... $col-max -> $col {
+            COL: for $col-min ... $col-max -> $col {
                 my ($value, $unfmt, $equat) = '', '', '';
-                my $cell  = $ws.get_cell($row, $col);
-                unless $cell.defined {
-                    $cell = '';
-                    @cols.push: $value;
-                    next;
+                my $c  = $ws.get_cell($row, $col);
+                my $A1 = xl-rowcol-to-cell $row, $col;
+                # capture in a Raku object
+                my $cell = Cell.new: :$row, :$col, :$A1;
+                unless $c.defined {
+                    $cell.value = '';
+                    @cols.push: $cell;
+                    next COL;
                 }
-                $value = $cell.value;
-                $unfmt = $cell.unformatted;
-                #$equat = $cell.Formula;
-                @cols.push: $value;
+                $cell.value       = $c.value       // '';
+                $cell.unformatted = $c.unformatted // '';
+                $cell.formula     = $c<Formula>    // '';
+                @cols.push: $cell;
             }
             @rowcols.push: @cols;
+            $Ws.rowcols.push: @cols; # @rowcols;
         }
         ++$sn;
     }
+
+    return $Wb; # the Workbook
+
     return @rowcols;
 }
 
+=begin comment
 sub read-xlsx($fnam, :$wsnum = 0, :$wsnam, :$debug) is export {
     # Returns an array of rows which are arrays of columns of
     # cell values.
@@ -176,6 +230,7 @@ sub read-xlsx($fnam, :$wsnum = 0, :$wsnam, :$debug) is export {
         exit;
     }
 }
+=end comment
 
 =begin comment
 multi write-xlsx($fnam, @rows, :$debug) is export {
@@ -218,6 +273,66 @@ multi write-xlsx($fnam, $workbook) is export {
 }
 =end comment
 
+sub write-xlsx-cells($fnam, @rowcols, :$debug) is export {
+    # Writes an xlsx file from an input 2x2 array of Cell objects.
+
+    use Excel::Writer::XLSX:from<Perl5>;
+    use Excel::Writer::XLSX::Utility:from<Perl5>;
+
+    # start an empty Excel file to be written to
+    my $wb  = Excel::Writer::XLSX.new: $fnam;
+    my $ws  = $wb.add_worksheet; # $wb<Worksheet>[0];
+    my $wsn = $ws<Name> // '';
+    note "Sheet name: $wsn" if $debug;
+
+    my $nrows = @rowcols.elems;
+    my $ncols = @rowcols[0].elems;
+    my $i = 0;
+    ROW: for @rowcols -> $row {
+        my $j = 0;
+        COL: for $row -> $col {
+            my $cell  = @rowcols[$i][$j] // '';
+            if !$cell {
+                $ws.write_blank: $i, $j;
+                next COL;
+            }
+            if !$ws {
+                die "Unexpected null Worksheek";
+            }
+
+            my $equat = $cell.formula     // '';
+            my $value = $cell.value       // '';
+            my $unfmt = $cell.unformatted // '';
+
+            if $debug {
+                note "DEBUG: cell[$i][$j] is a Cell object";
+                note "    value       = '$value'";
+                note "    unformatted = '$unfmt'";
+                note "    formula     = '$equat'";
+            }
+
+            # now write to the real spreadsheet
+            if $equat {
+                # we need A1 row/col ID
+                my $A1 = xl_rowcol_to_cell($i, $j);    # C2                $ws.write: $i, $j, $equat;
+                $ws.write_formula: $A1, $equat;
+            }
+            elsif $value {
+                $ws.write_string: $i, $j, $value;
+            }
+            elsif $unfmt {
+                $ws.write: $i, $j, $unfmt;
+            }
+            else {
+                $ws.write_blank: $i, $j;
+            }
+            ++$j;
+        }
+        ++$i;
+    }
+    $wb.close;
+}
+
 sub write-xlsx-values($fnam, @rowcols, :$debug) is export {
     # Writes an xlsx file from an input 2x2 array of cells of text or
     # numerical data.
@@ -236,10 +351,171 @@ sub write-xlsx-values($fnam, @rowcols, :$debug) is export {
         my $j = 0;
         for $row -> $col {
             my $val = @rowcols[$i][$j];
-            note "DEBUG: cell[$i][$j] = '$val'" if $debug;
+            note "DEBUG: cell[$i][$j] contents = '$val'" if $debug;
             ++$j;
         }
         ++$i;
     }
     $wb.close;
+}
+
+##### Functions ported from Excel::Writer::XLSX
+###############################################################################
+#
+# xl_rowcol_to_cell($row, $col, $row_absolute, $col_absolute)
+#
+sub xl-rowcol-to-cell($row is copy,
+                      $col,
+                      $row-abs is copy = 0,
+                      $col-abs is copy = 0;
+                     ) is export {
+
+    ++$row;  # Change from 0-indexed to 1 indexed.
+    $row-abs = $row-abs ?? '$' !! '';
+    $col-abs = $col-abs ?? '$' !! '';
+
+    my $col-str = xl-col-to-name($col, $col-abs);
+
+    return $col-str ~ $row-abs ~ $row;
+
+    =begin comment
+    # original
+    my $row     = $_[0] + 1;          # Change from 0-indexed to 1 indexed.
+    my $col     = $_[1];
+    my $row_abs = $_[2] ? '$' : '';
+    my $col_abs = $_[3] ? '$' : '';
+
+
+    my $col_str = xl_col_to_name( $col, $col_abs );
+
+    return $col_str . $row_abs . $row;
+    =end comment
+}
+
+###############################################################################
+#
+# xl_cell_to_rowcol($string)
+#
+# Returns: ($row, $col, $row_absolute, $col_absolute)
+#
+# The $row_absolute and $col_absolute parameters aren't documented because they
+# mainly used internally and aren't very useful to the user.
+#
+sub xl-cell-to-rowcol($cell is copy) is export {
+
+    return (0, 0, 0, 0) unless $cell;
+
+    $cell ~~ / ('$'?) ([A..Z]**1..3) ('$'?)(\d+) /;
+
+    my $col-abs = $0 eq "" ?? 0 !! 1;
+    my $col     = $1;
+    my $row-abs = $2 eq "" ?? 0 !! 1;
+    my $row     = $3;
+
+    # Convert base26 column string to number
+    # All your Base are belong to us.
+    my @chars = $col.comb;
+    my $expn = 0;
+    $col = 0;
+
+    while @chars {
+        my $char = @chars.pop;    # LS char first
+        $col += ( ord( $char ) - ord( 'A' ) + 1 ) * ( 26**$expn );
+        ++$expn;
+    }
+
+    # Convert 1-index to zero-index
+    --$row;
+    --$col;
+
+    return $row, $col, $row-abs, $col-abs;
+
+    =begin comment
+    # original
+    my $cell = shift;
+
+    return ( 0, 0, 0, 0 ) unless $cell;
+
+    $cell =~ /(\$?)([A-Z]{1,3})(\$?)(\d+)/;
+
+    my $col_abs = $1 eq "" ? 0 : 1;
+    my $col     = $2;
+    my $row_abs = $3 eq "" ? 0 : 1;
+    my $row     = $4;
+
+    # Convert base26 column string to number
+    # All your Base are belong to us.
+    my @chars = split //, $col;
+    my $expn = 0;
+    $col = 0;
+
+    while ( @chars ) {
+        my $char = pop( @chars );    # LS char first
+        $col += ( ord( $char ) - ord( 'A' ) + 1 ) * ( 26**$expn );
+        $expn++;
+    }
+
+    # Convert 1-index to zero-index
+    $row--;
+    $col--;
+
+    return $row, $col, $row_abs, $col_abs;
+    =end comment
+}
+
+###############################################################################
+#
+# xl_col_to_name($col, $col_absolute)
+#
+sub xl-col-to-name($col is copy, $col-abs is copy) {
+
+    $col-abs    = $col-abs ?? '$' !! '';
+    my $col-str = '';
+
+    # Change from 0-indexed to 1 indexed.
+    ++$col;
+
+    while $col {
+
+        # Set remainder from 1 .. 26
+        my $remainder = $col % 26 || 26;
+
+        # Convert the $remainder to a character. C-ishly.
+        my $col-letter = chr( ord( 'A' ) + $remainder - 1 );
+
+        # Accumulate the column letters, right to left.
+        $col-str = $col-letter ~ $col-str;
+
+        # Get the next order of magnitude.
+        $col = Int( ( $col - 1 ) div 26 );
+    }
+
+    return $col-abs ~ $col-str;
+
+    =begin comment
+    # original
+    my $col     = $_[0];
+    my $col_abs = $_[1] ? '$' : '';
+    my $col_str = '';
+
+    # Change from 0-indexed to 1 indexed.
+    $col++;
+
+    while ( $col ) {
+
+        # Set remainder from 1 .. 26
+        my $remainder = $col % 26 || 26;
+
+        # Convert the $remainder to a character. C-ishly.
+        my $col_letter = chr( ord( 'A' ) + $remainder - 1 );
+
+        # Accumulate the column letters, right to left.
+        $col_str = $col_letter . $col_str;
+
+        # Get the next order of magnitude.
+        $col = int( ( $col - 1 ) / 26 );
+    }
+
+    return $col_abs . $col_str;
+    =end comment
 }
