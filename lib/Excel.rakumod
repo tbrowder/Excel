@@ -196,19 +196,19 @@ sub parse-xlsx-workbook($filename, :$wsnum = 0, :$wsnam, :$debug) is export {
             COL: for $col-min ... $col-max -> $col {
                 # this is the Perl cell object from Spreadsheet::ParseXSLX:
                 my $wc  = $ws.get_cell($row, $col);
-                my $A1 = xl-rowcol-to-cell $row, $col;
 
+                my $A1 = xl-rowcol-to-cell $row, $col;
                 # capture it in a Raku object
                 my $cell = Cell.new: :$row, :$col, :$A1;
-
-                $cell.read-xlsx-cell: $ws, $wc;
-
-                =begin comment
-                unless $c.defined {
+                unless $wc.defined {
                     $cell.value = '';
                     @cols.push: $cell;
                     next COL;
                 }
+
+                $cell.read-xlsx-cell: $ws, $wc;
+
+                =begin comment
                 $cell.value       = $wc.value       // '';
                 $cell.unformatted = $wc.unformatted // '';
                 $cell.formula     = $wc<Formula>    // '';
