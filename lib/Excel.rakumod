@@ -1,6 +1,5 @@
 unit module Excel;
 
-#use Data::Dump;
 use Data::Dump::Tree;
 
 =begin pod
@@ -12,50 +11,150 @@ with the Perl XLSX writer C<Excel::Writer::XLSX>.
 
 
 class Cell is export {
+    use Excel::Writer::XLSX:from<Perl5>;
+
     has $.row; # defined in constructor
     has $.col; # defined in constructor
     has $.A1;  # defined in constructor
+
     has $.value       is rw = '';
     has $.unformatted is rw = '';
     has $.formula     is rw = '';
     has $.type        is rw = '';
-    #has %.attrs       is rw = {};
-}
+
+    has $.debug       is rw = 0;
+
+    has %.font        is rw = {}
+    has %.format      is rw = {}
+
+    method TWEAK {
+        # initialize known hash key/value pairs
+        # font info
+        self.font<Name>           = '';
+        self.font<Bold>           = '';
+        self.font<Italic>         = '';
+        self.font<Height>         = '';
+        self.font<Underline>      = '';
+        self.font<UnderlineStyle> = '';
+        self.font<Color>          = '';
+        self.font<Strikeout>      = '';
+        self.font<Super>          = '';
+
+        # format info
+        self.format<Font>         = '';
+        self.format<AlignH>       = '';
+        self.format<AlignV>       = '';
+        self.format<Indent>       = '';
+        self.format<Wrap>         = '';
+        self.format<Shrink>       = '';
+        self.format<Rotate>       = '';
+        self.format<JustLast>     = '';
+        self.format<ReadDir>      = '';
+        self.format<BdrStyle>     = '';
+        self.format<BdrColor>     = '';
+        self.format<BdrDiag>      = '';
+        self.format<Fill>         = '';
+        self.format<Lock>         = '';
+        self.format<Hidden>       = '';
+        self.format<Style>        = '';
+    }
+
+    method read-xlsx-cell($ws, $wc) {
+        # Given Excel::Writer::XLSX worksheet and cell objects $ws, and $wc, read
+        # their data into the calling Raku cell.
+
+        # At the moment I see no reason not to transfer all
+        # the known attritutes (properties).
+        return if !$wc;
+
+        # fundamental
+        self.value                = $wc.value;
+        self.unformatted          = $wc.unformatted;
+        self.formula              = $wc<Formula>;
+
+        # font info
+        self.font<Name>           = $wc<Font><Name>;
+        self.font<Bold>           = $wc<Font><Bold>;
+        self.font<Italic>         = $wc<Font><Italic>;
+        self.font<Height>         = $wc<Font><Height>;
+        self.font<Underline>      = $wc<Font><Underline>;
+        self.font<UnderlineStyle> = $wc<Font><UnderlineStyle>;
+        self.font<Color>          = $wc<Font><Color>;
+        self.font<Strikeout>      = $wc<Font><Strikeout>;
+        self.font<Super>          = $wc<Font><Super>;
+
+        # format info
+        self.format<Font>         = $wc<Format><Font>;
+        self.format<AlignH>       = $wc<Format><AlignH>;
+        self.format<AlignV>       = $wc<Format><AlignV>;
+        self.format<Indent>       = $wc<Format><Indent>;
+        self.format<Wrap>         = $wc<Format><Wrap>;
+        self.format<Shrink>       = $wc<Format><Shrink>;
+        self.format<Rotate>       = $wc<Format><Rotate>;
+        self.format<JustLast>     = $wc<Format><JustLast>;
+        self.format<ReadDir>      = $wc<Format><ReadDir>;
+        self.format<BdrStyle>     = $wc<Format><BdrStyle>;
+        self.format<BdrColor>     = $wc<Format><BdrColor>;
+        self.format<BdrDiag>      = $wc<Format><BdrDiag>;
+        self.format<Fill>         = $wc<Format><Fill>;
+        self.format<Lock>         = $wc<Format><Lock>;
+        self.format<Hidden>       = $wc<Format><Hidden>;
+        self.format<Style>        = $wc<Format><Style>;
+    }
+
+    method write-xlsx-cell($ws, $row, $col) {
+        # Given an Excel::Writer::XLSX worksheet object $ws, write
+        # this Raku cell's attributes into the target cell.
+
+        # At the moment I see no reason not to transfer all
+        # the known attritutes (properties).
+
+        if self.debug {
+            note "DEBUG: cell[{self.row}][{self.col}] is a Cell object";
+            note "    value       = '{self.value}'";
+            note "    unformatted = '{self.unformatted}'";
+            note "    formula     = '{self.formula}'";
+        }
+
+        # now write to the real spreadsheet
+        my $i = self.row;
+        my $j = self.col;
+        my $written = 0;
+        if self.formula {
+            # we need A1 row/col ID
+            my $A1 = xl-rowcol-to-cell($i, $j);
+            $ws.write_formula: $A1, "{self.formula}";
+            ++$written;
+        }
+        if self.value {
+            $ws.write_string: $i, $j, "{self.value}";
+            ++$written;
+        }
+        if self.unformatted {
+            $ws.write: $i, $j, "{self.unformatted}";
+            ++$written;
+        }
+
+        # formatting
+
+        unless $written {
+            $ws.write_blank: $i, $j;
+        }
+    }
+
+} # end of: class Cell
+
 
 class Worksheet is export {
     has $.name;   # defined in constructor
     has $.number; # defined in constructor
     has @.rowcols is rw = [];
-    #has %.attrs   is rw = {};
 }
 
 class Workbook is export {
     has $.filename; # defined in constructor
     has @.worksheets is rw = [];
-    #has %.attrs      is rw = {};
 }
-
-=begin comment
-# Perl modules
-use Excel::Writer::XLSX:from<Perl5>;
-use Spreadsheet::ParseXLSX:from<Perl5>;
-# older subs used with CVS::Parser
-=end comment
-
-=begin comment
-sub copy-xlsx($fin, $fout, :$debug) is export {
-    # This is mainly used to test the interoperability of
-    # the reader and writer.
-    my $wb-i = Spreadsheet::XLSX.new: $fin;
-#    my $wb-o = Excel::Writer::XLSX.new: $fout;
-
-    my @ws-i  = @($wb-i<Worksheet>);
-    for @ws-i -> $ws {
-        my $wsn = $ws<Name>;
-        note "Sheet name: $wsn" if $debug;
-    }
-}
-=end comment
 
 sub parse-xlsx-workbook($filename, :$wsnum = 0, :$wsnam, :$debug) is export {
     # Returns a Raku copy of the ExcelXLSX workbook in the input file.
@@ -75,7 +174,7 @@ sub parse-xlsx-workbook($filename, :$wsnum = 0, :$wsnam, :$debug) is export {
     for 0..^$wsc -> $wsnum {
         my $ws  = $wb.worksheet($wsnum); # can also use the name if need be
         my $wsn = $ws.get_name;
-        my $Ws = Worksheet.new: :number($wsnum), :name($wsn);
+        my $Ws  = Worksheet.new: :number($wsnum), :name($wsn);
 
         $Wb.worksheets.push: $Ws;
 
@@ -96,21 +195,26 @@ sub parse-xlsx-workbook($filename, :$wsnum = 0, :$wsnam, :$debug) is export {
             my @cols = [];
             COL: for $col-min ... $col-max -> $col {
                 # this is the Perl cell object from Spreadsheet::ParseXSLX:
-                my $c  = $ws.get_cell($row, $col);
+                my $wc  = $ws.get_cell($row, $col);
                 my $A1 = xl-rowcol-to-cell $row, $col;
 
                 # capture it in a Raku object
                 my $cell = Cell.new: :$row, :$col, :$A1;
+
+                $cell.read-xlsx-cell: $ws, $wc;
+
+                =begin comment
                 unless $c.defined {
                     $cell.value = '';
                     @cols.push: $cell;
                     next COL;
                 }
-                $cell.value       = $c.value       // '';
-                $cell.unformatted = $c.unformatted // '';
-                $cell.formula     = $c<Formula>    // '';
-       
-                # lots more data to collect. see Spreedsheet::ParseExcel
+                $cell.value       = $wc.value       // '';
+                $cell.unformatted = $wc.unformatted // '';
+                $cell.formula     = $wc<Formula>    // '';
+                =end comment
+
+                # lots more data to collect. see Spreadsheet::ParseExcel
 
 
                 # finished
@@ -124,149 +228,8 @@ sub parse-xlsx-workbook($filename, :$wsnum = 0, :$wsnam, :$debug) is export {
 
     return $Wb; # the Workbook
 
-    #return @rowcols;
-}
+} # end of: sub parse-xlsx-workbook
 
-=begin comment
-sub read-xlsx($fnam, :$wsnum = 0, :$wsnam, :$debug) is export {
-    # Returns an array of rows which are arrays of columns of
-    # cell values.
-    my @rowcols;
-
-    use Spreadsheet::XLSX:from<Perl5>;
-    my $wb = Spreadsheet::XLSX.new: $fnam;
-
-    for $wb.keys.sort -> $k {
-        note "DEBUG: found \$wb key: $k";
-    }
-
-    my $ws;
-    if $wsnam {
-        # a hack
-        $ws = get-worksheet-by-name $wb, $wsnam;
-    }
-    else {
-        $ws = $wb<Worksheet>[$wsnum];
-    }
-    for $ws.keys.sort -> $k {
-        note $k.^name;
-        note "DEBUG: found \$ws key: $k";
-    }
-
-    my $wsn = $ws<Name>;
-    # name could be a Blob
-    if $wsn ~~ Blob {
-        $wsn .= decode;
-    }
-
-    note "Sheet name: $wsn" if $debug;
-    for 0 .. $ws<MaxRow> -> $row {
-        my @cols = []; # makes it an array, a single object
-        for 0 .. $ws<MaxCol> -> $col {
-            my $cell = $ws<Cells>[$row][$col];
-            #Dump({$cell}) if $debug;
-            #dd $cell if $debug;
-            my $val  = $cell<Val> // ''; # Nil?
-            # could be a Blob
-            if $val ~~ Blob {
-                $val .= decode;
-            }
-            my $typ  = $cell<Type> // ''; # Nil?
-            # could be a Blob
-            if $typ ~~ Blob {
-                $typ .= decode;
-            }
-            my ($value, $unfmt, $type) = '', '', '';
-            if $val {
-                $value = $cell.value;
-                # could be a Blob
-                if $value ~~ Blob {
-                    $value .= decode;
-                }
-                $unfmt = $cell.unformatted;
-                # could be a Blob
-                if $unfmt ~~ Blob {
-                    $unfmt .= decode;
-                }
-                $type = $cell.unformatted;
-                # could be a Blob
-                if $type ~~ Blob {
-                    $type .= decode;
-                }
-            }
-            if $debug {
-                note "row $row; col $col:";
-                note "    Val:         |$val|";
-                note "    Type:        |$typ|";
-                note "    value:       |$value|";
-                note "    unformatted: |$unfmt|";
-            }
-            @cols.push: $val;
-        }
-        @rowcols.push: @cols;
-    }
-    # NOTE: DO NOT TRY TO CLOSE THE WORKBOOK
-    #       OR IT WILL CAUSE AN EXCEPTION
-    #$wb.close;
-
-    return @rowcols;
-
-    sub get-worksheet-by-name($workbook, $wsnam) {
-        my $n = 0;
-        my @ws;
-        for $workbook<Worksheet> -> $ws {
-            my $wsn = $ws<Name>;
-            return $ws if $wsn eq $wsnam;
-            # record the info for possible exit
-            my $s = sprintf "Number: %3d ; name: $wsn", $n++;
-            @ws.push: $s;
-        }
-        # We gracefully exit here but show the worksheet names
-        # and numbers that do exist:
-        note "FATAL: No worksheet name '$wsnam' found:";
-        .note for @ws;
-        exit;
-    }
-}
-=end comment
-
-=begin comment
-multi write-xlsx($fnam, @rows, :$debug) is export {
-    # Writes an xlsx file from an input 2x2 array of xlsx cell
-    # objects.
-
-    # start an empty Excel file to be written to
-    my $wb  = Excel::Writer::XLSX.new: $fnam;
-    my $ws  = $wb<Worksheet>[0];
-    my $wsn = $ws<Name>;
-    note "Sheet name: $wsn" if $debug;
-    my $nrows = @rows.elems;
-    my $ncols = @rows[0].elems;
-    for 0 .. ^$nrows -> $row {
-        for 0 .. ^$ncols -> $col {
-            my $in-cell = @rows[$row][$col];
-            # test the object to ensure it's a Cell object
-
-            =begin comment
-            my $cell = $ws<Cells>[$row][$col];
-            my $val  = $cell<Val>; # // ''; # Nil?
-            note "row $row; col $col: |$val|" if $debug;
-            if $values {
-                @cols.push: $val;
-            }
-            else {
-                @cols.push: $cell;
-            }
-            =end comment
-        }
-        #@rows.push: @cols;
-    }
-    #$wb.close;
-
-    #return @rows;
-}
-
-=end comment
 
 sub write-xlsx-workbook($fnam, Workbook $Wb, :$debug) is export {
     # Writes an xlsx file as a copy of the input Excel workbook.
@@ -283,23 +246,36 @@ sub write-xlsx-workbook($fnam, Workbook $Wb, :$debug) is export {
 
     #ddt $Ws;
 
-    my $k = 0;
+    my $k = -0;
     WORKSHEET: for @Wb-sheets -> $Ws {
+        ++$k;
+
         my $nrows = $Ws.rowcols.elems;
         my $ncols = $Ws.rowcols[0].elems;
         note "DEBUG: writing $nrows rows and $ncols columns";
 
-        my $ws  = $wb.add_worksheet: {$Ws.name}; 
+        my $ws;
+        if $Ws.name {
+            $ws  = $wb.add_worksheet: "{$Ws.name}";
+        }
+        else {
+            $ws  = $wb.add_worksheet;
+        }
 
         my $wsn = $ws<Name> // '';
         note "Sheet name: $wsn" if $debug;
 
-        my $i = 0;
+        my $i = -1;
         ROW: for $Ws.rowcols -> $row {
-            my $j = 0;
-            COL: for $row -> $cell {
-                #my $cell  = $Ws.rowcols[$i][$j] // '';
+            ++$i;
 
+            my $j = -1;
+            COL: for @($row) -> $cell {
+                ++$j;
+
+                $cell.write-xlsx-cell: $ws, $i, $j;
+
+                =begin comment
                 if !$cell {
                     $ws.write_blank: $i, $j;
                     next COL;
@@ -334,101 +310,15 @@ sub write-xlsx-workbook($fnam, Workbook $Wb, :$debug) is export {
                 else {
                     $ws.write_blank: $i, $j;
                 }
-                ++$j;
-            }
-            ++$i;
+                =end comment
+
+            } # end cell
         } # end row
-        ++$k;
     } # end worksheets
 
     $wb.close;
-}
 
-sub write-xlsx-cells($fnam, @rowcols, :$debug) is export {
-    # Writes an xlsx file from an input 2x2 array of Cell objects.
-
-    use Excel::Writer::XLSX:from<Perl5>;
-    use Excel::Writer::XLSX::Utility:from<Perl5>;
-
-    # start an empty Excel file to be written to
-    my $wb  = Excel::Writer::XLSX.new: $fnam;
-    my $ws  = $wb.add_worksheet; # $wb<Worksheet>[0];
-    my $wsn = $ws<Name> // '';
-    note "Sheet name: $wsn" if $debug;
-
-    my $nrows = @rowcols.elems;
-    my $ncols = @rowcols[0].elems;
-    my $i = 0;
-    ROW: for @rowcols -> $row {
-        my $j = 0;
-        COL: for $row -> $col {
-            my $cell  = @rowcols[$i][$j] // '';
-            if !$cell {
-                $ws.write_blank: $i, $j;
-                next COL;
-            }
-            if !$ws {
-                die "Unexpected null Worksheek";
-            }
-
-            my $equat = $cell.formula     // '';
-            my $value = $cell.value       // '';
-            my $unfmt = $cell.unformatted // '';
-
-            if $debug {
-                note "DEBUG: cell[$i][$j] is a Cell object";
-                note "    value       = '$value'";
-                note "    unformatted = '$unfmt'";
-                note "    formula     = '$equat'";
-            }
-
-            # now write to the real spreadsheet
-            if $equat {
-                # we need A1 row/col ID
-                my $A1 = xl-rowcol-to-cell($i, $j);    # C2                $ws.write: $i, $j, $equat;
-                $ws.write_formula: $A1, $equat;
-            }
-            elsif $value {
-                $ws.write_string: $i, $j, $value;
-            }
-            elsif $unfmt {
-                $ws.write: $i, $j, $unfmt;
-            }
-            else {
-                $ws.write_blank: $i, $j;
-            }
-            ++$j;
-        }
-        ++$i;
-    }
-    $wb.close;
-}
-
-sub write-xlsx-values($fnam, @rowcols, :$debug) is export {
-    # Writes an xlsx file from an input 2x2 array of cells of text or
-    # numerical data.
-
-    use Excel::Writer::XLSX:from<Perl5>;
-    # start an empty Excel file to be written to
-    my $wb  = Excel::Writer::XLSX.new: $fnam;
-    my $ws  = $wb<Worksheet>[0];
-    my $wsn = $ws<Name> // '';
-    note "Sheet name: $wsn" if $debug;
-
-    my $nrows = @rowcols.elems;
-    my $ncols = @rowcols[0].elems;
-    my $i = 0;
-    for @rowcols -> $row {
-        my $j = 0;
-        for $row -> $col {
-            my $val = @rowcols[$i][$j];
-            note "DEBUG: cell[$i][$j] contents = '$val'" if $debug;
-            ++$j;
-        }
-        ++$i;
-    }
-    $wb.close;
-}
+} # end of: sub write-xlsx-workbook
 
 ##### Functions ported from Excel::Writer::XLSX
 ###############################################################################
@@ -461,7 +351,8 @@ sub xl-rowcol-to-cell($row is copy,
 
     return $col_str . $row_abs . $row;
     =end comment
-}
+
+} # end of: sub xl-rowcol-to-cell
 
 ###############################################################################
 #
@@ -532,7 +423,8 @@ sub xl-cell-to-rowcol($cell is copy) is export {
 
     return $row, $col, $row_abs, $col_abs;
     =end comment
-}
+
+} # end of sub: sub xl-cell-to-rowcol
 
 ###############################################################################
 #
@@ -589,4 +481,5 @@ sub xl-col-to-name($col is copy, $col-abs is copy) {
 
     return $col_abs . $col_str;
     =end comment
-}
+
+} # end of: sub xl-col-to-name
