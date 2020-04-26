@@ -1,13 +1,5 @@
 unit module Excel;
 
-=begin pod
-
-
-=end pod
-
-
-
-
 #use Data::Dump;
 use Data::Dump::Tree;
 
@@ -27,20 +19,20 @@ class Cell is export {
     has $.unformatted is rw = '';
     has $.formula     is rw = '';
     has $.type        is rw = '';
-    has %.attrs       is rw = {};
+    #has %.attrs       is rw = {};
 }
 
 class Worksheet is export {
     has $.name;   # defined in constructor
     has $.number; # defined in constructor
     has @.rowcols is rw = [];
-    has %.attrs   is rw = {};
+    #has %.attrs   is rw = {};
 }
 
 class Workbook is export {
     has $.filename; # defined in constructor
     has @.worksheets is rw = [];
-    has %.attrs      is rw = {};
+    #has %.attrs      is rw = {};
 }
 
 =begin comment
@@ -65,10 +57,9 @@ sub copy-xlsx($fin, $fout, :$debug) is export {
 }
 =end comment
 
-sub parse-xlsx($filename, :$wsnum = 0, :$wsnam, :$debug) is export {
-    # Returns an array of rows which are arrays of columns of
-    # Cell objects.
-    my @rowcols = [];
+sub parse-xlsx-workbook($filename, :$wsnum = 0, :$wsnam, :$debug) is export {
+    # Returns a Raku copy of the ExcelXLSX workbook in the input file.
+    #my @rowcols = [];
 
     use Spreadsheet::ParseXLSX:from<Perl5>;
     my $parser = Spreadsheet::ParseXLSX.new;
@@ -88,7 +79,7 @@ sub parse-xlsx($filename, :$wsnum = 0, :$wsnam, :$debug) is export {
 
         $Wb.worksheets.push: $Ws;
 
-        if $sn && $debug {
+        if 0 && $sn && $debug {
             note "DEBUG: exiting after first worksheet";
             exit;
         }
@@ -100,13 +91,15 @@ sub parse-xlsx($filename, :$wsnum = 0, :$wsnam, :$debug) is export {
             note "DEBUG: row min/max: {$row-min}/{$row-max}";
         }
         my ($col-min, $col-max) = $ws.col_range;
+
         ROW: for $row-min ... $row-max -> $row {
             my @cols = [];
             COL: for $col-min ... $col-max -> $col {
-                my ($value, $unfmt, $equat) = '', '', '';
+                # this is the Perl cell object from Spreadsheet::ParseXSLX:
                 my $c  = $ws.get_cell($row, $col);
                 my $A1 = xl-rowcol-to-cell $row, $col;
-                # capture in a Raku object
+
+                # capture it in a Raku object
                 my $cell = Cell.new: :$row, :$col, :$A1;
                 unless $c.defined {
                     $cell.value = '';
@@ -116,17 +109,22 @@ sub parse-xlsx($filename, :$wsnum = 0, :$wsnam, :$debug) is export {
                 $cell.value       = $c.value       // '';
                 $cell.unformatted = $c.unformatted // '';
                 $cell.formula     = $c<Formula>    // '';
+       
+                # lots more data to collect. see Spreedsheet::ParseExcel
+
+
+                # finished
+
                 @cols.push: $cell;
             }
-            @rowcols.push: @cols;
-            $Ws.rowcols.push: @cols; # @rowcols;
+            $Ws.rowcols.push: @cols;
         }
         ++$sn;
     }
 
     return $Wb; # the Workbook
 
-    return @rowcols;
+    #return @rowcols;
 }
 
 =begin comment
@@ -268,10 +266,83 @@ multi write-xlsx($fnam, @rows, :$debug) is export {
     #return @rows;
 }
 
-multi write-xlsx($fnam, $workbook) is export {
-    # Writes an xlsx file as a copy of the input Excel workbook.
-}
 =end comment
+
+sub write-xlsx-workbook($fnam, Workbook $Wb, :$debug) is export {
+    # Writes an xlsx file as a copy of the input Excel workbook.
+
+    use Excel::Writer::XLSX:from<Perl5>;
+    #use Excel::Writer::XLSX::Utility:from<Perl5>;
+
+    # start an empty Excel file to be written to
+    my $wb  = Excel::Writer::XLSX.new: $fnam;
+
+    # iterate through the input workbook
+    my @Wb-sheets = $Wb.worksheets;
+    my $Wb-wsnums = $Wb.worksheets.elems;
+
+    #ddt $Ws;
+
+    my $k = 0;
+    WORKSHEET: for @Wb-sheets -> $Ws {
+        my $nrows = $Ws.rowcols.elems;
+        my $ncols = $Ws.rowcols[0].elems;
+        note "DEBUG: writing $nrows rows and $ncols columns";
+
+        my $ws  = $wb.add_worksheet: {$Ws.name}; 
+
+        my $wsn = $ws<Name> // '';
+        note "Sheet name: $wsn" if $debug;
+
+        my $i = 0;
+        ROW: for $Ws.rowcols -> $row {
+            my $j = 0;
+            COL: for $row -> $cell {
+                #my $cell  = $Ws.rowcols[$i][$j] // '';
+
+                if !$cell {
+                    $ws.write_blank: $i, $j;
+                    next COL;
+                }
+                if !$ws {
+                    die "Unexpected null Worksheek";
+                }
+
+                my $equat = $cell.formula     // '';
+                my $value = $cell.value       // '';
+                my $unfmt = $cell.unformatted // '';
+
+                if $debug {
+                    note "DEBUG: cell[$i][$j] is a Cell object";
+                    note "    value       = '$value'";
+                    note "    unformatted = '$unfmt'";
+                    note "    formula     = '$equat'";
+                }
+
+                # now write to the real spreadsheet
+                if $equat {
+                    # we need A1 row/col ID
+                    my $A1 = xl-rowcol-to-cell($i, $j);    # C2                $ws.write: $i, $j, $equat;
+                    $ws.write_formula: $A1, $equat;
+                }
+                elsif $value {
+                    $ws.write_string: $i, $j, $value;
+                }
+                elsif $unfmt {
+                    $ws.write: $i, $j, $unfmt;
+                }
+                else {
+                    $ws.write_blank: $i, $j;
+                }
+                ++$j;
+            }
+            ++$i;
+        } # end row
+        ++$k;
+    } # end worksheets
+
+    $wb.close;
+}
 
 sub write-xlsx-cells($fnam, @rowcols, :$debug) is export {
     # Writes an xlsx file from an input 2x2 array of Cell objects.
@@ -314,7 +385,7 @@ sub write-xlsx-cells($fnam, @rowcols, :$debug) is export {
             # now write to the real spreadsheet
             if $equat {
                 # we need A1 row/col ID
-                my $A1 = xl_rowcol_to_cell($i, $j);    # C2                $ws.write: $i, $j, $equat;
+                my $A1 = xl-rowcol-to-cell($i, $j);    # C2                $ws.write: $i, $j, $equat;
                 $ws.write_formula: $A1, $equat;
             }
             elsif $value {
