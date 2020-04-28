@@ -4,7 +4,7 @@
 
 **A Raku module to create or use Excel xlsx files**
 
-# UPDATE 2020-04-27
+# UPDATE 2020-04-28
 
 **SEE WIP EXCEL TEMPLATE IN EXAMPLES DIRECTORY**
 
@@ -15,8 +15,10 @@ The module can:
 * Read an existing Microsoft Excel xlsx file
 * Create Excel xlsx files
 * Use an Excel file as a template to create new Excel xlsx files
-* Use a TOML-format configuration file to input values defining a
+* Use an HJSON-format configuration file to input values defining a
   templated project
+* Use an HJSON-format formats file to force  certain  Excel xlsx formatting
+  that cannot currently be read from the Excell xlsx template file
 
 Planned:
 
@@ -55,7 +57,7 @@ from existing Excel xslx files:
 
 The reader is **not** capable of extracting format information
 so the user must define any desired non-default output formatting
-via an input TOML file.
+via an input HJSON file.
 
 ## DATA FLOW
 
@@ -82,6 +84,8 @@ This version provides:
 
 * Excel template reader
 
+* Excel format reader
+
 * Excel writer
 
     * a single workbook per data set
@@ -98,9 +102,9 @@ This version provides:
 2. Use special coded text inputs in the template cell to define mappings
    between input data and the final worksheet.
 
-3. Use a TOML file to define various inputs for a case, but
-   it is mandatory if you want to transfer desired formattingg
-   from the template to the output worksheets.
+3. Use an HJSON file to define various output formats for a case if
+   you want to transfer duplicate formatting in the template to the
+   output worksheets.
 
 CREDITS
 =======
