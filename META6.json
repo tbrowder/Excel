@@ -7,7 +7,6 @@
     "build-depends" : [ ],
     "depends" : [
         "JSON::Hjson",
-        "Data::Dump::Tree",
         "Inline::Perl5"
     ],
     "description" : "Provides ability to work with Excel workbooks",
