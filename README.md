@@ -114,7 +114,7 @@ over the last 25+ years, including all the well-known luminaries Larry
 Wall and Damian Conway. But the workhorse modules I used most heavily
 over 15 years in my civilian career were those by **John McNamara**,
 the most recent incarnation of his great Excel modules being
-Excel::Writer::XLSX.
+`Excel::Writer::XLSX`.
 
 Of course I couldn't use John's work without the excellent Raku module
 Inline::Perl5 whose original author is **Stefan Seifert**.
