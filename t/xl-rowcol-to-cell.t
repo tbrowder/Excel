@@ -6,6 +6,7 @@
 #
 
 use Excel;
+use Excel::Utility;
 
 use Test;
 
@@ -23,13 +24,13 @@ my $caption;
 my $cell;
 
 # Create a test case for a range of the Excel 2007 columns.
-$cell = 'A';
+$cell = 'a'; # using lowercase
 for 0 .. 300 -> $i {
     push @expected, [ $i, $i, $cell ~ ( $i + 1 ) ];
     ++$cell;
 }
 
-$cell = 'WQK';
+$cell = lc 'WQK';
 for 16_000 .. 16_384 -> $i {
     push @expected, [ $i, $i, $cell ~ ( $i + 1 ) ];
     ++$cell;
@@ -62,15 +63,15 @@ is_deeply( $got, $expected, $caption );
 #
 # Test the xl_rowcol_to_cell method with absolute references.
 #
-$expected = 'A$1';
+$expected = 'a$1';
 $got = xl-rowcol-to-cell(0, 0, 1);
 is $got, $expected, $caption;
 
-$expected = '$A1';
+$expected = '$a1';
 $got = xl-rowcol-to-cell(0, 0, 0, 1);
 is $got, $expected, $caption;
 
 
-$expected = '$A$1';
+$expected = '$a$1';
 $got = xl-rowcol-to-cell(0, 0, 1, 1);
 is $got, $expected, $caption;
