@@ -6,7 +6,8 @@
     ],
     "build-depends" : [ ],
     "depends" : [
-        "Config::TOML",
+        "JSON::Hjson",
+        "Data::Dump::Tree",
         "Inline::Perl5"
     ],
     "description" : "Provides ability to work with Excel workbooks",
@@ -14,8 +15,9 @@
     "name" : "Excel",
     "perl" : "6*",
     "provides" : {
-        "Excel"       : "lib/Excel.rakumod",
-        "Excel::Misc" : "lib/Excel/Misc.rakumod"
+        "Excel"         : "lib/Excel.rakumod",
+        "Excel::Misc"   : "lib/Excel/Misc.rakumod",
+        "Excel::Format" : "lib/Excel/Format.rakumod"
     },
     "resources" : [ ],
     "source-url" : "https://github.com/tbrowder/Excel-Raku.git",

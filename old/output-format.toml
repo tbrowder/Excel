@@ -1,0 +1,26 @@
+# Define output formatting by cells
+# as an array of strings keyed by the
+# "A1" reference to cells.
+#
+# Currently recognized formatting inputs
+# are:
+
+# Text attributes:
+l - left justify
+c - center
+r - right justify
+bold
+
+# Cell borders where the ':N' is an optional ending
+# to define a specific linewidth. If no value is
+# specified, the Excel default is used or the user's
+# default if it is specified.
+linewidth:N - the user's default linewidth
+top:N
+bottom:N
+left:N
+right:N
+
+
+
+B2 = [ "LJ"

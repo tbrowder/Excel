@@ -4,7 +4,7 @@
 
 **A Raku module to create or use Excel xlsx files**
 
-# UPDATE 2020-04-19
+# UPDATE 2020-04-27
 
 **SEE WIP EXCEL TEMPLATE IN EXAMPLES DIRECTORY**
 
@@ -15,13 +15,13 @@ The module can:
 * Read an existing Microsoft Excel xlsx file
 * Create Excel xlsx files
 * Use an Excel file as a template to create new Excel xlsx files
+* Use a TOML-format configuration file to input values defining a
+  templated project
 
 Planned:
 
 * Allow user-defined call-back functions to aid the templating
   process
-* Use a TOML-format configuration file to input values defining a
-  templated project
 
 ## DESCRIPTION
 
@@ -37,8 +37,25 @@ be installed for the distro to work (I use `cpanm` for that):
 
 + Perl modules required:
 
-    + `Excel::Writer::XLSX` # write files
-    + `Spreadsheet::XLSX`   # read files
+    + `Excel::Writer::XLSX`      # write files
+    + `Spreadsheet::ParseXLSX`   # read files
+
+## LIMITATIONS
+
+Currently the reader is capable of extracting the following
+from existing Excel xslx files:
+
++ Worksheet data:
+
+  - name
+  - cell type
+  - cell formatted values
+  - cell unformatted values
+  - cell formulas
+
+The reader is **not** capable of extracting format information
+so the user must define any desired non-default output formatting
+via an input TOML file.
 
 ## DATA FLOW
 
@@ -57,9 +74,9 @@ Typical row-oriented data sets might be:
 * a research scientist's experimental results
 * a financial analyst's list of security data
 
-## INITIAL VERSION
+## PROVIDES
 
-The first working version will provide:
+This version provides:
 
 * Excel and CSV data readers
 
@@ -73,21 +90,17 @@ The first working version will provide:
 
 ## Using a template
 
-After diving in to my project I've decided the original direction was
-too complicated for my use. Now I'm heading toward a process like
-this:
-
-1. Design the Excel template to look just like I want it to look and
-   use dummy data in the desired cells and format.  Add real
+1. Manually create the Excel template to look as desired.
+   Use dummy data in the desired cells and format.  Add real
    exlanatory text and format as desired.  Include working formulas
    using dummy data and format and locate result cells as desired.
 
-2. Use additional worksheets in the template to define mappings
-   between the cells in the input, template, and output files.
+2. Use special coded text inputs in the template cell to define mappings
+   between input data and the final worksheet.
 
-## GENESIS
-
-See the original README.md in the "old" subdir.
+3. Use a TOML file to define various inputs for a case, but
+   it is mandatory if you want to transfer desired formattingg
+   from the template to the output worksheets.
 
 CREDITS
 =======

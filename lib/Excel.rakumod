@@ -1,6 +1,10 @@
 unit module Excel;
 
+use JSON::Hjson;
 use Data::Dump::Tree;
+
+use Excel::Format;
+use Excel::Utility;
 
 =begin pod
 
@@ -22,10 +26,17 @@ class Cell is export {
     has $.formula     is rw = '';
     has $.type        is rw = '';
 
+    has $.coded-text  is rw = '';
     has $.debug       is rw = 0;
 
+    #=begin comment
     has %.font        is rw = {}
-    has %.format      is rw = {}
+    has $.format      is rw = ''; {}
+    has $.encoding    is rw = '';
+    has $.is_merged     is rw = '';
+    has $.get_rich_text is rw = '';
+    has $.get_hyperlink is rw = '';
+    has %.properties    is rw = {}
 
     method TWEAK {
         # initialize known hash key/value pairs
@@ -41,6 +52,7 @@ class Cell is export {
         self.font<Super>          = '';
 
         # format info
+        =begin comment
         self.format<Font>         = '';
         self.format<AlignH>       = '';
         self.format<AlignV>       = '';
@@ -57,52 +69,28 @@ class Cell is export {
         self.format<Lock>         = '';
         self.format<Hidden>       = '';
         self.format<Style>        = '';
+        =end comment
     }
 
-    method read-xlsx-cell($ws, $wc) {
-        # Given Excel::Writer::XLSX worksheet and cell objects $ws, and $wc, read
+    method read-xlsx-cell($perl-ws, $perl-wc) {
+        # Given Spreadsheet::ParseExcelXLSX worksheet and cell objects $ws, and $wc, read
         # their data into the calling Raku cell.
 
         # At the moment I see no reason not to transfer all
         # the known attritutes (properties).
-        return if !$wc;
+        return if !$perl-wc;
 
         # fundamental
-        self.value                = $wc.value;
-        self.unformatted          = $wc.unformatted;
-        self.formula              = $wc<Formula>;
+        self.value                = $perl-wc.value;
 
-        # font info
-        self.font<Name>           = $wc<Font><Name>;
-        self.font<Bold>           = $wc<Font><Bold>;
-        self.font<Italic>         = $wc<Font><Italic>;
-        self.font<Height>         = $wc<Font><Height>;
-        self.font<Underline>      = $wc<Font><Underline>;
-        self.font<UnderlineStyle> = $wc<Font><UnderlineStyle>;
-        self.font<Color>          = $wc<Font><Color>;
-        self.font<Strikeout>      = $wc<Font><Strikeout>;
-        self.font<Super>          = $wc<Font><Super>;
-
-        # format info
-        self.format<Font>         = $wc<Format><Font>;
-        self.format<AlignH>       = $wc<Format><AlignH>;
-        self.format<AlignV>       = $wc<Format><AlignV>;
-        self.format<Indent>       = $wc<Format><Indent>;
-        self.format<Wrap>         = $wc<Format><Wrap>;
-        self.format<Shrink>       = $wc<Format><Shrink>;
-        self.format<Rotate>       = $wc<Format><Rotate>;
-        self.format<JustLast>     = $wc<Format><JustLast>;
-        self.format<ReadDir>      = $wc<Format><ReadDir>;
-        self.format<BdrStyle>     = $wc<Format><BdrStyle>;
-        self.format<BdrColor>     = $wc<Format><BdrColor>;
-        self.format<BdrDiag>      = $wc<Format><BdrDiag>;
-        self.format<Fill>         = $wc<Format><Fill>;
-        self.format<Lock>         = $wc<Format><Lock>;
-        self.format<Hidden>       = $wc<Format><Hidden>;
-        self.format<Style>        = $wc<Format><Style>;
+        if self.value ~~ /^';'/ {
+            self.coded-text = self.value;
+        }
+        self.unformatted          = $perl-wc.unformatted;
+        self.formula              = $perl-wc<Formula>;
     }
 
-    method write-xlsx-cell($ws, $row, $col) {
+    method write-xlsx-cell($perl-ws, $row, $col) {
         # Given an Excel::Writer::XLSX worksheet object $ws, write
         # this Raku cell's attributes into the target cell.
 
@@ -123,22 +111,22 @@ class Cell is export {
         if self.formula {
             # we need A1 row/col ID
             my $A1 = xl-rowcol-to-cell($i, $j);
-            $ws.write_formula: $A1, "{self.formula}";
+            $perl-ws.write_formula: $A1, "{self.formula}";
             ++$written;
         }
         if self.value {
-            $ws.write_string: $i, $j, "{self.value}";
+            $perl-ws.write_string: $i, $j, "{self.value}";
             ++$written;
         }
         if self.unformatted {
-            $ws.write: $i, $j, "{self.unformatted}";
+            $perl-ws.write: $i, $j, "{self.unformatted}";
             ++$written;
         }
 
         # formatting
 
         unless $written {
-            $ws.write_blank: $i, $j;
+            $perl-ws.write_blank: $i, $j;
         }
     }
 
@@ -156,57 +144,63 @@ class Workbook is export {
     has @.worksheets is rw = [];
 }
 
-sub parse-xlsx-workbook($filename, :$wsnum = 0, :$wsnam, :$debug) is export {
+sub parse-xlsx-workbook($filename, :$perl-wsnum = 0, :$perl-wsnam, :$debug) is export {
     # Returns a Raku copy of the ExcelXLSX workbook in the input file.
-    #my @rowcols = [];
 
     use Spreadsheet::ParseXLSX:from<Perl5>;
-    my $parser = Spreadsheet::ParseXLSX.new;
-    my $wb     = $parser.parse($filename)
+    my $perl-parser = Spreadsheet::ParseXLSX.new;
+    my $perl-wb     = $perl-parser.parse($filename)
               || die "FATAL: File $filename can't be parsed";
-    note "DEBUG file: {$wb<File>}" if $debug;
-    my $wsc = $wb.worksheet_count;
-    note "DEBUG worksheet count: {$wsc}" if $debug;
+    note "DEBUG file: {$perl-wb<File>}" if $debug;
+    my $perl-wsc = $perl-wb.worksheet_count;
+    note "DEBUG worksheet count: {$perl-wsc}" if $debug;
 
-    my $Wb = Workbook.new: :$filename;
+    my $raku-wb = Workbook.new: :$filename;
 
     my $sn = 0;
-    for 0..^$wsc -> $wsnum {
-        my $ws  = $wb.worksheet($wsnum); # can also use the name if need be
-        my $wsn = $ws.get_name;
-        my $Ws  = Worksheet.new: :number($wsnum), :name($wsn);
+    for 0..^$perl-wsc -> $perl-wsnum {
+        my $perl-ws  = $perl-wb.worksheet($perl-wsnum); # can also use the name if need be
+        my $perl-wsn = $perl-ws.get_name;
 
-        $Wb.worksheets.push: $Ws;
+        # Raku
+        my $raku-ws  = Worksheet.new: :number($perl-wsnum), :name($perl-wsn);
+        $raku-wb.worksheets.push: $raku-ws;
 
         if 0 && $sn && $debug {
             note "DEBUG: exiting after first worksheet";
             exit;
         }
         if $debug {
-            note "DEBUG: got worksheet $sn...";
+            note "DEBUG: got Perl worksheet $sn...";
         }
-        my ($row-min, $row-max) = $ws.row_range;
+        my ($row-min, $row-max) = $perl-ws.row_range;
+        if $row-min > $row-max {
+            die "FATAL: $row-min > $row-max";
+        }
         if $debug {
             note "DEBUG: row min/max: {$row-min}/{$row-max}";
         }
-        my ($col-min, $col-max) = $ws.col_range;
+        my ($col-min, $col-max) = $perl-ws.col_range;
+        if $col-min > $col-max {
+            die "FATAL: $col-min > $col-max";
+        }
 
         ROW: for $row-min ... $row-max -> $row {
             my @cols = [];
             COL: for $col-min ... $col-max -> $col {
                 # this is the Perl cell object from Spreadsheet::ParseXSLX:
-                my $wc  = $ws.get_cell($row, $col);
+                my $perl-wc  = $perl-ws.get_cell($row, $col);
 
                 my $A1 = xl-rowcol-to-cell $row, $col;
                 # capture it in a Raku object
                 my $cell = Cell.new: :$row, :$col, :$A1;
-                unless $wc.defined {
+                unless $perl-wc.defined {
                     $cell.value = '';
                     @cols.push: $cell;
                     next COL;
                 }
 
-                $cell.read-xlsx-cell: $ws, $wc;
+                $cell.read-xlsx-cell: $perl-ws, $perl-wc;
 
                 =begin comment
                 $cell.value       = $wc.value       // '';
@@ -221,59 +215,71 @@ sub parse-xlsx-workbook($filename, :$wsnum = 0, :$wsnam, :$debug) is export {
 
                 @cols.push: $cell;
             }
-            $Ws.rowcols.push: @cols;
+            $raku-ws.rowcols.push: @cols;
         }
         ++$sn;
     }
 
-    return $Wb; # the Workbook
+    return $raku-wb; # the Workbook
 
 } # end of: sub parse-xlsx-workbook
 
 
-sub write-xlsx-workbook($fnam, Workbook $Wb, :$debug) is export {
+sub write-xlsx-workbook($fnam,
+                        Workbook $raku-wb,
+                        :$hjfil,      #= optional Hjson file of formatting desires
+                        :$debug,
+                        :@ofils!,
+                       ) is export {
     # Writes an xlsx file as a copy of the input Excel workbook.
+    # lower case everything!!
+    my %fmt = $hjfil ?? from-hjson(lc (slurp $hjfil)) !! {};
 
     use Excel::Writer::XLSX:from<Perl5>;
-    #use Excel::Writer::XLSX::Utility:from<Perl5>;
 
     # start an empty Excel file to be written to
-    my $wb  = Excel::Writer::XLSX.new: $fnam;
+    my $perl-wb  = Excel::Writer::XLSX.new: $fnam;
+    # apply formatting as desired
+    if %fmt.elems {
+        # the formats are converted into format vars
+        # inside the workbook for later use in cells
+        build-xlsx-formats %fmt, $perl-wb, :$debug;
+    }
 
     # iterate through the input workbook
-    my @Wb-sheets = $Wb.worksheets;
-    my $Wb-wsnums = $Wb.worksheets.elems;
+    my @Wb-sheets = $raku-wb.worksheets;
+    my $Wb-wsnums = $raku-wb.worksheets.elems;
 
     #ddt $Ws;
 
     my $k = -0;
-    WORKSHEET: for @Wb-sheets -> $Ws {
+    WORKSHEET: for @Wb-sheets -> $raku-ws {
         ++$k;
 
-        my $nrows = $Ws.rowcols.elems;
-        my $ncols = $Ws.rowcols[0].elems;
+        my $nrows = $raku-ws.rowcols.elems;
+        my $ncols = $raku-ws.rowcols[0].elems;
         note "DEBUG: writing $nrows rows and $ncols columns";
 
-        my $ws;
-        if $Ws.name {
-            $ws  = $wb.add_worksheet: "{$Ws.name}";
+        my $perl-ws;
+        if $raku-ws.name {
+            $perl-ws  = $perl-wb.add_worksheet: "{$raku-ws.name}";
         }
         else {
-            $ws  = $wb.add_worksheet;
+            $perl-ws  = $perl-wb.add_worksheet;
         }
 
-        my $wsn = $ws<Name> // '';
-        note "Sheet name: $wsn" if $debug;
+        my $perl-wsn = $perl-ws<Name> // '';
+        note "Sheet name: $perl-wsn" if $debug;
 
         my $i = -1;
-        ROW: for $Ws.rowcols -> $row {
+        ROW: for $raku-ws.rowcols -> $row {
             ++$i;
 
             my $j = -1;
             COL: for @($row) -> $cell {
                 ++$j;
 
-                $cell.write-xlsx-cell: $ws, $i, $j;
+                $cell.write-xlsx-cell: $perl-ws, $i, $j;
 
                 =begin comment
                 if !$cell {
@@ -316,170 +322,137 @@ sub write-xlsx-workbook($fnam, Workbook $Wb, :$debug) is export {
         } # end row
     } # end worksheets
 
-    $wb.close;
+    $perl-wb.close;
+    @ofils.push: $fnam;
 
 } # end of: sub write-xlsx-workbook
 
-##### Functions ported from Excel::Writer::XLSX
-###############################################################################
-#
-# xl_rowcol_to_cell($row, $col, $row_absolute, $col_absolute)
-#
-sub xl-rowcol-to-cell($row is copy,
-                      $col,
-                      $row-abs is copy = 0,
-                      $col-abs is copy = 0;
-                     ) is export {
+sub build-xlsx-formats(%fmt,
+                       $perl-wb,     #= a Perl Excel::Writer::XLSX workbook
+                       :$debug) {
+    # The formats are converted into format vars
+    # inside the workbook for later use in cells
+    # and returned as vars named for the cells.
+    # For now, the formats are for all worksheets, but
+    # could be named something like $B3-WS0 or $B3-WS'Foo for
+    # specific sheets.
 
-    ++$row;  # Change from 0-indexed to 1 indexed.
-    $row-abs = $row-abs ?? '$' !! '';
-    $col-abs = $col-abs ?? '$' !! '';
+    use Excel::Writer::XLSX:from<Perl5>;
 
-    my $col-str = xl-col-to-name($col, $col-abs);
+    # create eval strings for each format object to be defined
+    # name them after cell, and possibly for specific worksheets
+    my %e;
+    # global attributes to be applied for all %e keys
+    my %g;
 
-    return $col-str ~ $row-abs ~ $row;
+    # format keys may be using ranges
+    %fmt = split-ranges %fmt;
 
-    =begin comment
-    # original
-    my $row     = $_[0] + 1;          # Change from 0-indexed to 1 indexed.
-    my $col     = $_[1];
-    my $row_abs = $_[2] ? '$' : '';
-    my $col_abs = $_[3] ? '$' : '';
-
-
-    my $col_str = xl_col_to_name( $col, $col_abs );
-
-    return $col_str . $row_abs . $row;
-    =end comment
-
-} # end of: sub xl-rowcol-to-cell
-
-###############################################################################
-#
-# xl_cell_to_rowcol($string)
-#
-# Returns: ($row, $col, $row_absolute, $col_absolute)
-#
-# The $row_absolute and $col_absolute parameters aren't documented because they
-# mainly used internally and aren't very useful to the user.
-#
-sub xl-cell-to-rowcol($cell is copy) is export {
-
-    return (0, 0, 0, 0) unless $cell;
-
-    $cell ~~ / ('$'?) ([A..Z]**1..3) ('$'?)(\d+) /;
-
-    my $col-abs = $0 eq "" ?? 0 !! 1;
-    my $col     = $1;
-    my $row-abs = $2 eq "" ?? 0 !! 1;
-    my $row     = $3;
-
-    # Convert base26 column string to number
-    # All your Base are belong to us.
-    my @chars = $col.comb;
-    my $expn = 0;
-    $col = 0;
-
-    while @chars {
-        my $char = @chars.pop;    # LS char first
-        $col += ( ord( $char ) - ord( 'A' ) + 1 ) * ( 26**$expn );
-        ++$expn;
+    if 0 && $debug {
+        for %fmt.keys -> $k {
+            ddt %fmt{$k};
+        }
+        die "DEBUG exit";
     }
 
-    # Convert 1-index to zero-index
-    --$row;
-    --$col;
+    #my @keys = %fmt.keys.sort;
+    KEY: for %fmt.keys.sort -> $k is copy {
+        note "DEBUG-1: hjson key: '$k'" if $debug;
+        my $v = %fmt{$k};
+        my $vtyp = $v.^name;
 
-    return $row, $col, $row-abs, $col-abs;
+        if $debug {
+            note "  its value type is '$vtyp'";
+            if $v ~~ Str {
+                note "  its value is '$v'";
+            }
+        }
 
-    =begin comment
-    # original
-    my $cell = shift;
+        # we need to handle a range of cells in the same row or column
+        if $k ~~ /^ :i (<[A..Z]>+ <[1..9]> \d*) ['-' (<[A..Z]>+ <[1..9]> \d*) ]? $/ {
+            say "DEBUG: key '$k' is an 'A1' key and should have an array or string as its value" if $debug;
+            my $k1 = ~$0;
+            my $k2;
+            if defined $1 {
+                $k2 = ~$1;
+            }
+            if $debug {
+                if $k2 {
+                    note "DEBUG: range key '$k', keys: '$k1' and '$k2'";
+                }
+                else {
+                    note "DEBUG: non-range key '$k', key: '$k1'";
+                }
 
-    return ( 0, 0, 0, 0 ) unless $cell;
+                #note "  next key...";
+                #next KEY;
+            }
 
-    $cell =~ /(\$?)([A-Z]{1,3})(\$?)(\d+)/;
+            # it must be an "A1" cell
+            my $cell = $k;
 
-    my $col_abs = $1 eq "" ? 0 : 1;
-    my $col     = $2;
-    my $row_abs = $3 eq "" ? 0 : 1;
-    my $row     = $4;
+            # Handle formatting: We could have a single value OR
+            # an array of values.
+            if $v ~~ Str {
+                # could have a colon pair
+                if $v ~~ /':'/ {
+                    my ($a, $val) = split ':', $v;
+                    die "FATAL: Format attr '$a' is not known." if not %formats{$a}:exists;
+                    %e{$cell}{$a} = $val;
+                }
+                else {
+                    %e{$cell}{$k} = $v;
+                }
 
-    # Convert base26 column string to number
-    # All your Base are belong to us.
-    my @chars = split //, $col;
-    my $expn = 0;
-    $col = 0;
-
-    while ( @chars ) {
-        my $char = pop( @chars );    # LS char first
-        $col += ( ord( $char ) - ord( 'A' ) + 1 ) * ( 26**$expn );
-        $expn++;
+            }
+            elsif $v ~~ Array {
+                for $v -> $attr {
+                    # could have a colon pair
+                    if $attr ~~ /':'/ {
+                        my ($a, $val) = split ':', $attr;
+                        die "FATAL: Format attr '$a' is not known." if not %formats{$a}:exists;
+                        %e{$cell}{$a} = $val;
+                    }
+                    else {
+                        %e{$cell}{$attr} = Nil;
+                    }
+                }
+            }
+            else {
+                die "FATAL: Unexpected value type '$vtyp' for key '$k'";
+            }
+        }
+        else {
+            # a global format attribute to be applied for the cell-named formats
+            # is it a known format?
+            die "FATAL: Format attr '$k' is not known." if not %formats{$k}:exists;
+            %g{$k} = $v;
+        }
     }
 
-    # Convert 1-index to zero-index
-    $row--;
-    $col--;
-
-    return $row, $col, $row_abs, $col_abs;
-    =end comment
-
-} # end of sub: sub xl-cell-to-rowcol
-
-###############################################################################
-#
-# xl_col_to_name($col, $col_absolute)
-#
-sub xl-col-to-name($col is copy, $col-abs is copy) {
-
-    $col-abs    = $col-abs ?? '$' !! '';
-    my $col-str = '';
-
-    # Change from 0-indexed to 1 indexed.
-    ++$col;
-
-    while $col {
-
-        # Set remainder from 1 .. 26
-        my $remainder = $col % 26 || 26;
-
-        # Convert the $remainder to a character. C-ishly.
-        my $col-letter = chr( ord( 'A' ) + $remainder - 1 );
-
-        # Accumulate the column letters, right to left.
-        $col-str = $col-letter ~ $col-str;
-
-        # Get the next order of magnitude.
-        $col = Int( ( $col - 1 ) div 26 );
+    if $debug {
+        note "DEBUG early exit.";
+        exit;
     }
 
-    return $col-abs ~ $col-str;
+    # apply all the global attrs to the cell attrs but only if they aren't already specified
+    # in the border properties
+    for %g.keys -> $gattr {
+        my $gval = %g{$gattr};
 
-    =begin comment
-    # original
-    my $col     = $_[0];
-    my $col_abs = $_[1] ? '$' : '';
-    my $col_str = '';
+        for %e.keys -> $cell {
+            for %(%e{$cell}) -> $attr {
+                # if it has a value we pass on
+                next if %e{$cell}{$attr}.defined;
 
-    # Change from 0-indexed to 1 indexed.
-    $col++;
-
-    while ( $col ) {
-
-        # Set remainder from 1 .. 26
-        my $remainder = $col % 26 || 26;
-
-        # Convert the $remainder to a character. C-ishly.
-        my $col_letter = chr( ord( 'A' ) + $remainder - 1 );
-
-        # Accumulate the column letters, right to left.
-        $col_str = $col_letter . $col_str;
-
-        # Get the next order of magnitude.
-        $col = int( ( $col - 1 ) / 26 );
+                # check: top, bottom, left, right for linewidth
+                for "left", "right", "top", "bottom" -> $b {
+                    if $b eq $attr {
+                        %e{$cell}{$attr} = $gattr;
+                    }
+                }
+            }
+        }
     }
 
-    return $col_abs . $col_str;
-    =end comment
-
-} # end of: sub xl-col-to-name
+} # end of: sub build-xlsx-formats

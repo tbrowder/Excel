@@ -1,0 +1,60 @@
+/*
+
+ Define output formatting by cells as an array of strings keyed by the
+ "A1" reference to cells.
+
+ NOTES:
+
+ All input text is case-insensitive and is downcased upon reading the
+ file.
+
+ If multiple entries of the same attribute are made, the last one
+ entered will be used.
+
+ Currently recognized formatting inputs are:
+
+ Text attributes:
+
+   L            - left justify
+   C            - center
+   R            - right justify
+   bold
+   italic
+   color:Name
+   color:RGB
+   bgcolor:Name - background color
+   bgcolor:RGB
+   font:Name    - no spaces allowed
+   fontsize:N   - an integer or a fractional decimal number
+
+ Cell borders:
+
+ The ':N' is an optional ending to define a specific linewidth. If no
+ value is specified, the Excel default is used or the user's default
+ if it is specified.
+
+   linewidth:N  - the user's default linewidth
+   top:N
+   bottom:N
+   left:N
+   right:N
+
+ Note that a range of cells in either the same row or column can be share the
+ same format using this method:
+
+   B1-B4 : []
+
+
+*/
+
+linewidth: 3
+B3 : bold
+
+B1-B2 : [
+    font:TimesRoman
+    fontsize:20
+    L
+    bold
+    top
+    bottom
+]
