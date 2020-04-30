@@ -4,9 +4,9 @@ use Excel::Utility;
 
 # font and properties
 has $.font      is rw;
-has $.underline    is rw;
+has $.underline is rw;
 has $.italic    is rw;
-has $.slanted    is rw;
+has $.slant      is rw;
 has $.bold       is rw;
 
 # justification
@@ -40,7 +40,13 @@ bottom
 left
 right
 font
-fontsize
+size
+border
+color
+fg
+bg
+italic
+slant
 >;
 
 #| known colors

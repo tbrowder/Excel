@@ -20,12 +20,13 @@
    R            - right justify
    bold
    italic
-   color:Name
+   slant
+   color:Name - foreground (font) color
    color:RGB
-   bgcolor:Name - background color
-   bgcolor:RGB
+   bg:Name - background color
+   bg:RGB
    font:Name    - no spaces allowed
-   fontsize:N   - an integer or a fractional decimal number
+   size:N   - an integer or a fractional decimal number
 
  Cell borders:
 
@@ -39,10 +40,16 @@
    left:N
    right:N
 
- Note that a range of cells in either the same row or column can be share the
- same format using this method:
+ Note that a range of cells in a row or column or rectangle
+ the same format. Use this syntax for a row or column:
 
    B1-B4 : []
+
+ For cells in a rectangular group use this syntax where the four corner
+ cell are specified in any order (but they must must define a proper
+ rectangular range):
+
+   B1-B4-A1-A4 : []
 
 
 */
@@ -52,9 +59,14 @@ B3 : bold
 
 B1-B2 : [
     font:TimesRoman
-    fontsize:20
+    size:20
     L
     bold
     top
     bottom
 ]
+
+D1-D2-F1-F2 : [
+    border:3
+]
+

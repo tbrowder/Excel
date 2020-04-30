@@ -90,43 +90,59 @@ class Cell is export {
         self.formula              = $perl-wc<Formula>;
     }
 
-    method write-xlsx-cell($perl-ws, $row, $col) {
+    #method write-xlsx-cell($perl-ws, $row, $col, :$format = '') {
+    method write-xlsx-cell($perl-ws, $format = '') {
         # Given an Excel::Writer::XLSX worksheet object $ws, write
-        # this Raku cell's attributes into the target cell.
+        # this Raku cell's attributes into the target cell at the same location.
+        # We always use the A1 notation.
 
         # At the moment I see no reason not to transfer all
         # the known attritutes (properties).
 
         if self.debug {
             note "DEBUG: cell[{self.row}][{self.col}] is a Cell object";
+            note "    A1          = '{self.A1}'";
             note "    value       = '{self.value}'";
             note "    unformatted = '{self.unformatted}'";
             note "    formula     = '{self.formula}'";
         }
 
         # now write to the real spreadsheet
-        my $i = self.row;
-        my $j = self.col;
+        #my $i  = self.row;
+        #my $j  = self.col;
+        my $A1 = self.A1;
         my $written = 0;
         if self.formula {
             # we need A1 row/col ID
-            my $A1 = xl-rowcol-to-cell($i, $j);
-            $perl-ws.write_formula: $A1, "{self.formula}";
+            #my $A1 = xl-rowcol-to-cell($i, $j);
+            if $format {
+                $perl-ws.write_formula: $A1, "{self.formula}", $format;
+            }
+            else {
+                $perl-ws.write_formula: $A1, "{self.formula}";
+            }
             ++$written;
         }
         if self.value {
-            $perl-ws.write_string: $i, $j, "{self.value}";
+            if $format {
+                #$perl-ws.write_string: $i, $j, "{self.value}", $format;
+                $perl-ws.write_string: $A1, "{self.value}", $format;
+            }
+            else {
+                #$perl-ws.write_string: $i, $j, "{self.value}";
+                $perl-ws.write_string: $A1, "{self.value}";
+            }
             ++$written;
         }
         if self.unformatted {
-            $perl-ws.write: $i, $j, "{self.unformatted}";
+            #$perl-ws.write: $i, $j, "{self.unformatted}";
+            $perl-ws.write: $A1, "{self.unformatted}";
             ++$written;
         }
 
-        # formatting
-
         unless $written {
-            $perl-ws.write_blank: $i, $j;
+            #$perl-ws.write_blank: $i, $j;
+            $perl-ws.write_blank: $A1;
         }
     }
 
@@ -279,7 +295,10 @@ sub write-xlsx-workbook($fnam,
             COL: for @($row) -> $cell {
                 ++$j;
 
-                $cell.write-xlsx-cell: $perl-ws, $i, $j;
+                # get the A1 name of the cell and its format, if any
+                my $A1 = $cell.A1;
+                my $format = %fmt{$A1}:exists && %fmt{$A1}.defined ?? %fmt{$A1} !! '';
+                $cell.write-xlsx-cell: $perl-ws, $format;
 
                 =begin comment
                 if !$cell {
@@ -430,7 +449,7 @@ sub build-xlsx-formats(%fmt,
         }
     }
 
-    if $debug {
+    if 0 and $debug {
         note "DEBUG early exit.";
         exit;
     }
@@ -454,5 +473,49 @@ sub build-xlsx-formats(%fmt,
             }
         }
     }
+    # we now have all we need to define the formats
+    for %e.keys -> $a1 {
+        note "DEBUG: defining format for cell '$a1'" if $debug;
+        my %prop = %(%e{$a1});
+        for %prop.keys -> $p {
+            my $v = %prop{$p}.defined ?? %prop{$p} !! '';
+            given $p {
+                when /border/ {
+                }
+                when /top/ {
+                }
+                when /bottom/ {
+                }
+                when /left/ {
+                }
+                when /right/ {
+                }
+                when /bold/ {
+                }
+                when /italic/ {
+                }
+                when /font/ {
+                }
+                when /color/ {
+                }
+                when /linewidth/ {
+                }
+                when /size/ {
+                }
+                when /^l$/ {
+                }
+                when /^c$/ {
+                }
+                when /^r$/ {
+                }
+                when /^fg$/ {
+                }
+                when /^bg$/ {
+                }
+            } # end of given block
+
+        }
+    }
+
 
 } # end of: sub build-xlsx-formats

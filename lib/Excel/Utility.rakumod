@@ -2,32 +2,67 @@ unit module Exec::Utility;
 
 # A1 format utilities
 
+# some useful regexes
+# use them as named captures like this:
+#   if $str ~~ /^ <cell> $/ {
+#       my $key = ~$/;
+#   }
+
+our token cell       is export { :i <[A..Z]>+ <[1..9]> \d* }               # no hyphens
+our token line-range is export { <cell> '-' <cell> }                       # one hyphen
+our token rect-range is export { <cell> '-' <cell> '-' <cell> '-' <cell> } # three hyphens
+
+# a utility class for local use
+class C {
+    has Str $.A1 is rw; # A1..ZZZ999 # MaxColsMaxRows
+    has Int $.r  is rw; # 1..MaxRows
+    has Str $.c  is rw; # A..MaxCols
+}
+
 sub split-ranges(%fmt, :$debug --> Hash) is export {
     my %new-fmt;
 
-    # Cell "A1" keys like "B1-B6" and "B1-D1" are ranges and need to be split into
-    # their own key/array
+    # Cell "A1" keys like "B1-B6" and "B1-B4-D1-D4" are ranges and
+    # need to be split into their own key/array.
     KEY: for %fmt.keys.sort -> $k is copy {
+        my $is-cell-key = 0;
+
         note "DEBUG-2: hjson key: '$k'" if $debug;
         my $v = %fmt{$k};
         my $vtyp = $v.^name;
 
+        my @k;
+        if $k ~~ /^ <rect-range> $/ {
+            my $c = ~$/;
+            @k = split '-', $c;
+            ++$is-cell-key;
+        }
+        elsif $k ~~ /^ <line-range> $/ {
+            my $c = ~$/;
+            @k = split '-', $c;
+            ++$is-cell-key;
+        }
+        elsif $k ~~ /^ <cell> $/ {
+            my $c = ~$/;
+            @k.push: $c;
+            ++$is-cell-key;
+        }
+
         note "  its value type is '$vtyp'" if $debug;
-        # if it's a range, split it, other just pass it on
-        if $k ~~ /^ :i (<[A..Z]>+ <[1..9]> \d*) ['-' (<[A..Z]>+ <[1..9]> \d*) ]? $/ {
-            say "DEBUG: key '$k' is an 'A1' key and should have an array or string as its value" if $debug;
-            my $k1 = ~$0;
-            my $k2;
-            if defined $1 {
-                $k2 = ~$1;
-            }
-            if !$k2.defined {
+        # if it's a cell key or range, split it, other just pass it on
+        if $is-cell-key  {
+            my $ncells = @k.elems;
+
+            say "DEBUG: we have one or more 'A1' cell keys and should have an array or string as its shared value" if $debug;
+
+            if $ncells == 1 {
                 %new-fmt{$k} = $v;
                 next KEY;
             }
 
-            # a cell range key: the values will be assigned to all the keys in the range
-            my @ckeys = split-range $k;
+            # a cell range key: the values will be assigned to all the
+            # keys in the range
+            my @ckeys = split-range @k;
             for @ckeys -> $ck {
                 %new-fmt{$ck} = $v;
             }
@@ -41,12 +76,68 @@ sub split-ranges(%fmt, :$debug --> Hash) is export {
 
     return %new-fmt;
 
-} # from: sub split-ranges
+} # end of: sub split-ranges
 
-sub split-range($range is copy, :$debug --> Array) is export {
-    die "FATAL: Range '$range' has no hyphen" if !$range.contains: '-';
-    my ($start, $end) = split '-', $range;
+sub split-linear(@bcells, :$debug --> Array) is export {
+    # the two @bcells are the bounding cells of a linear range
+    die "FATAL: there should be two cells but there are {@bcells.elems}" if @bcells.elems != 2;
 
+
+    # if there are two cells (one hyphen, linear range) it's easy:
+    my @c;
+    for @bcells -> $A1 is copy {
+        # if we have been rigorous in our plan the alpha chars
+        # should be lower-case
+        die "Unexpected upper-case alpha character in cell '$A1'"
+            if $A1 ~~ /<[A..Z]>/;
+        if $A1 ~~ /^ (<[a..z]>+) (<[1..9]> \d*) $/ {
+            my $c = ~$0;
+            my $r = +$1;
+            $c = C.new: :$r, :$c, $A1;
+            @c.push: $c;
+        }
+        else {
+            die "FATAL: Unexpected format in cell A1 label '$A1'";
+        }
+    }
+
+    my ($L, $R, $T, $B); # range end cells: left/right, top/bottom
+
+    enum RangeStat <IsRow IsCol>;
+    my $range-type;
+    if @c[0].r == @c[1].r {
+        $range-type = IsRow;
+        $L = shift @c;
+        $R = shift @c;
+        # ensure the left col is alphabetically less than the right col
+        if $L.c gt $R.c  {
+            ($L, $R) = ($R, $L);
+        }
+    }
+    elsif @c[0].c eq @c[1].c {
+        $range-type = IsCol;
+        $T = shift @c;
+        $B = shift @c;
+        # ensure the top row is less than the bottom row
+        if $T.r > $B.r  {
+            ($T, $B) = ($B, $T);
+        }
+    }
+    else {
+        die "FATAL: the two cells '{@c[0].A1}' and '{@c[1].A1}' are not a linear range";
+    }
+
+    my ($start-A1, $end-A1);
+    if IsCol {
+        $start-A1 = $T.A1;
+        $end-A1   = $B.A1;
+    }
+    elsif IsRow {
+        $start-A1 = $L.A1;
+        $end-A1   = $R.A1;
+    }
+
+    =begin comment
     {
         # this is mainly a debug check
         my ($alpha-start, $int-start, $alpha-end, $int-end);
@@ -66,9 +157,10 @@ sub split-range($range is copy, :$debug --> Array) is export {
             die "FATAL: Unexpected A1 format: '$end'";
         }
     }
+    =end comment
 
-    my ($start-row, $start-col, $srow-abs, $scol-abs) = xl-cell-to-rowcol $start;
-    my ($end-row  , $end-col  , $erow-abs, $ecol-abs) = xl-cell-to-rowcol $end;
+    my ($start-row, $start-col, $srow-abs, $scol-abs) = xl-cell-to-rowcol $start-A1;
+    my ($end-row  , $end-col  , $erow-abs, $ecol-abs) = xl-cell-to-rowcol $end-A1;
 
 
     my @A1;
@@ -87,12 +179,100 @@ sub split-range($range is copy, :$debug --> Array) is export {
         }
     }
     else {
-        die "FATAL: unexpected non-linear cell range: '{$start}:{$end}'";
+        die "FATAL: unexpected non-linear cell range: '{$start-A1}:{$end-A1}'";
     }
 
     return @A1;
 
-} # from: sub split-range
+} # end of: sub split-linear
+
+sub split-rectangular(@bcells, :$debug --> Array) is export {
+    # the four @bcells are the bounding cells of a rectangular range
+    die "FATAL: there should be four cells but there are {@bcells.elems}" if @bcells.elems != 4;
+
+    # We assume the cells are such that they satisfy the following
+    # rules:
+    #   there must be two each of the two "A" (column) values
+    #   there must be two each of the two "1" (row) values
+
+    # The upper-left corner must have the "smallest" letter and number
+    # and the lower-right must have the "largest."  The remaining
+    # cells can be placed thusly: the cell with the same alpha as
+    # upper-left must be the lower-left, and the remaining cell must
+    # be the upper-right.
+
+    # create an array of the cell objects:
+    my @c;
+    for @bcells -> $A1 is copy {
+        # if we have been rigorous in our plan the alpha chars
+        # should be lower-case
+        die "Unexpected upper-case alpha character in cell '$A1'" if $A1 ~~ /<[A..Z]>/;
+        if $A1 ~~ /^ (<[a..z]>+) (<[1..9]> \d*) $/ {
+            my $c = +$0;
+            my $r = ~$1;
+            $c = C.new: :$r, :$c, :$A1;
+            @c.push: $c;
+        }
+        else {
+            die "FATAL: Unexpected format in cell A1 label '$A1'";
+        }
+    }
+
+    # sort the cells by row (numerically)
+    my @a = @c.sort({$^b.r cmp $^a.r});
+
+    my ($ul, $ur, $ll, $lr);
+    # the top row
+    $ul = shift @a;
+    $ur = shift @a;
+    # compare the columns alphabetically and swap if need be
+    if $ul.c gt $ur.c {
+        ($ul, $ur) = ($ur, $ul);
+    }
+
+    # the bottom row
+    $ll = shift @a;
+    $lr = shift @a;
+    # compare the columns alphabetically and swap if need be
+    if $ll.c gt $lr.c {
+        ($ll, $lr) = ($lr, $ll);
+    }
+
+    my @A1;
+    # step through each row and treat each as a linear range of
+    # columns
+    my $start-row = $ul.r;
+    my $end-row   = $ll.r;
+    for $start-row .. $end-row -> $rownum {
+        # convert the row into a new linear range in "A1" notation
+        my $start-cell = $ul.c ~ $rownum.Str;
+        my $end-cell   = $ur.c ~ $rownum.Str;
+
+        my @bcells = $start-cell, $end-cell;
+        my @a1 = split-linear @bcells, :$debug;
+        @A1.append: @a1;
+    }
+
+    return @A1;
+
+} # end of: sub split-rectangular
+
+sub split-range($range is copy, :$debug --> Array) is export {
+    # Given a linear or rectangular range of "A1" cells,
+    # split them into individual cells that make up the
+    # entire range.
+    die "FATAL: Range '$range' has no hyphen" if !$range.contains: '-';
+
+    my @c = split '-', $range;
+
+    if @c.elems == 2 {
+       return split-linear @c, :$debug;
+    }
+    else {
+       return split-rectangular @c, :$debug;
+    }
+
+} # end of: sub split-range
 
 
 ##### Functions ported from Excel::Writer::XLSX
