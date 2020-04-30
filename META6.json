@@ -16,7 +16,7 @@
     "provides" : {
         "Excel"          : "lib/Excel.rakumod",
         "Excel::Misc"    : "lib/Excel/Misc.rakumod",
-        "Excel::Utility" : "lib/Excel/Misc.rakumod",
+        "Excel::Utility" : "lib/Excel/Utility.rakumod",
         "Excel::Format"  : "lib/Excel/Format.rakumod"
     },
     "resources" : [ ],
