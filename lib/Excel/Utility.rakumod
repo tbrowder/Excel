@@ -14,9 +14,31 @@ our token rect-range is export { <cell> '-' <cell> '-' <cell> '-' <cell> } # thr
 
 # a utility class for local use
 class C {
-    has Str $.A1 is rw; # A1..ZZZ999 # MaxColsMaxRows
-    has Int $.r  is rw; # 1..MaxRows
-    has Str $.c  is rw; # A..MaxCols
+    has Str $.A1; # is rw; # A1..ZZZ999 # MaxColsMaxRows
+    # use these for sorting:
+    has Int $.r ; # is rw; # 1..MaxRows
+    has Str $.c ; # is rw; # A..MaxCols
+
+    # 0-indexed rowcol
+    has $.row;
+    has $.col;
+
+    submethod TWEAK {
+        if $!A1 ~~ /^ (<[a..z]>+) (<[1..9]> \d*) $/ {
+            $!c = ~$0;
+            $!r = +$1;
+            ($!row, $!col) = xl-cell-to-rowcol $!A1;
+        }
+        else {
+            die "FATAL: Unexpected format (must use lower-case) in cell A1 label '$!A1'";
+        }
+     }
+     
+     sub sort-cols(C @c) {
+     }
+
+     sub sort-rows(C @c) {
+     }
 }
 
 sub split-ranges(%fmt, :$debug --> Hash) is export {
@@ -85,27 +107,18 @@ sub split-linear(@bcells, :$debug --> Array) is export {
 
     # if there are two cells (one hyphen, linear range) it's easy:
     my @c;
-    for @bcells -> $A1 is copy {
+    for @bcells -> $A1 {
         # if we have been rigorous in our plan the alpha chars
         # should be lower-case
-        die "Unexpected upper-case alpha character in cell '$A1'"
-            if $A1 ~~ /<[A..Z]>/;
-        if $A1 ~~ /^ (<[a..z]>+) (<[1..9]> \d*) $/ {
-            my $c = ~$0;
-            my $r = +$1;
-            $c = C.new: :$r, :$c, $A1;
-            @c.push: $c;
-        }
-        else {
-            die "FATAL: Unexpected format in cell A1 label '$A1'";
-        }
+        my $c = C.new: :$A1;
+        @c.push: $c;
     }
 
     my ($L, $R, $T, $B); # range end cells: left/right, top/bottom
 
     enum RangeStat <IsRow IsCol>;
     my $range-type;
-    if @c[0].r == @c[1].r {
+    if @c.head.r == @c.tail.r {
         $range-type = IsRow;
         $L = shift @c;
         $R = shift @c;
@@ -114,7 +127,7 @@ sub split-linear(@bcells, :$debug --> Array) is export {
             ($L, $R) = ($R, $L);
         }
     }
-    elsif @c[0].c eq @c[1].c {
+    elsif @c.head.c eq @c.tail.c {
         $range-type = IsCol;
         $T = shift @c;
         $B = shift @c;
@@ -124,7 +137,7 @@ sub split-linear(@bcells, :$debug --> Array) is export {
         }
     }
     else {
-        die "FATAL: the two cells '{@c[0].A1}' and '{@c[1].A1}' are not a linear range";
+        die "FATAL: the two cells '{@c.head.A1}' and '{@c.tail.A1}' are not a linear range";
     }
 
     my ($start-A1, $end-A1);
@@ -203,19 +216,11 @@ sub split-rectangular(@bcells, :$debug --> Array) is export {
 
     # create an array of the cell objects:
     my @c;
-    for @bcells -> $A1 is copy {
+    for @bcells -> $A1 {
         # if we have been rigorous in our plan the alpha chars
         # should be lower-case
-        die "Unexpected upper-case alpha character in cell '$A1'" if $A1 ~~ /<[A..Z]>/;
-        if $A1 ~~ /^ (<[a..z]>+) (<[1..9]> \d*) $/ {
-            my $c = +$0;
-            my $r = ~$1;
-            $c = C.new: :$r, :$c, :$A1;
-            @c.push: $c;
-        }
-        else {
-            die "FATAL: Unexpected format in cell A1 label '$A1'";
-        }
+        my $c = C.new: :$A1;
+        @c.push: $c;
     }
 
     # sort the cells by row (numerically)
@@ -257,19 +262,16 @@ sub split-rectangular(@bcells, :$debug --> Array) is export {
 
 } # end of: sub split-rectangular
 
-sub split-range($range is copy, :$debug --> Array) is export {
+sub split-range(@cells, :$debug --> Array) is export {
     # Given a linear or rectangular range of "A1" cells,
     # split them into individual cells that make up the
     # entire range.
-    die "FATAL: Range '$range' has no hyphen" if !$range.contains: '-';
 
-    my @c = split '-', $range;
-
-    if @c.elems == 2 {
-       return split-linear @c, :$debug;
+    if @cells.elems == 2 {
+       return split-linear @cells, :$debug;
     }
     else {
-       return split-rectangular @c, :$debug;
+       return split-rectangular @cells, :$debug;
     }
 
 } # end of: sub split-range

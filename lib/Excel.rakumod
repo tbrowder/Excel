@@ -13,13 +13,12 @@ with the Perl XLSX writer C<Excel::Writer::XLSX>.
 
 =end pod
 
-
 class Cell is export {
     use Excel::Writer::XLSX:from<Perl5>;
 
-    has $.row; # defined in constructor
-    has $.col; # defined in constructor
-    has $.A1;  # defined in constructor
+    has $.row; # 0-indexed, defined in constructor
+    has $.col; # 0-indexed, defined in constructor
+    has $.A1;  # "A1" reference, defined in constructor
 
     has $.value       is rw = '';
     has $.unformatted is rw = '';
@@ -38,7 +37,7 @@ class Cell is export {
     has $.get_hyperlink is rw = '';
     has %.properties    is rw = {}
 
-    method TWEAK {
+    submethod TWEAK {
         # initialize known hash key/value pairs
         # font info
         self.font<Name>           = '';
