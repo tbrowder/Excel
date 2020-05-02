@@ -11,6 +11,7 @@ unit module Exec::Utility;
 our token cell       is export { :i <[A..Z]>+ <[1..9]> \d* }               # no hyphens
 our token line-range is export { <cell> '-' <cell> }                       # one hyphen
 our token rect-range is export { <cell> '-' <cell> '-' <cell> '-' <cell> } # three hyphens
+our token cell-group is export { <cell> [ <[,\s]>+ <cell> ]+ }             # a group of two or more cells
 
 # a utility class for local use
 class C {
@@ -46,8 +47,10 @@ sub split-ranges(%fmt, :$debug --> Hash) is export {
 
     # Cell "A1" keys like "B1-B6" and "B1-B4-D1-D4" are ranges and
     # need to be split into their own key/array.
+    # We also handle groups.
     KEY: for %fmt.keys.sort -> $k is copy {
         my $is-cell-key = 0;
+        my $is-cell-grp = 0;
 
         note "DEBUG-2: hjson key: '$k'" if $debug;
         my $v = %fmt{$k};
@@ -64,6 +67,14 @@ sub split-ranges(%fmt, :$debug --> Hash) is export {
             @k = split '-', $c;
             ++$is-cell-key;
         }
+        elsif $k ~~ /^ <cell-group> $/ {
+            my $c = ~$/;
+            # convert commas to spaces
+            $c ~~ s:g/','/ /;
+            @k = $c.words;
+            ++$is-cell-key;
+            ++$is-cell-grp;
+        }
         elsif $k ~~ /^ <cell> $/ {
             my $c = ~$/;
             @k.push: $c;
@@ -71,7 +82,7 @@ sub split-ranges(%fmt, :$debug --> Hash) is export {
         }
 
         note "  its value type is '$vtyp'" if $debug;
-        # if it's a cell key or range, split it, other just pass it on
+        # if it's a cell key or range, split it, otherwise just pass it on
         if $is-cell-key  {
             my $ncells = @k.elems;
 
@@ -79,6 +90,16 @@ sub split-ranges(%fmt, :$debug --> Hash) is export {
 
             if $ncells == 1 {
                 %new-fmt{$k} = $v;
+                next KEY;
+            }
+
+            # a cell group key: the values will be assigned to all the
+            # keys in the group
+            if $is-cell-grp {
+                # the cells have already been split out above
+                for @k -> $k {
+                    %new-fmt{$k} = $v;
+                }
                 next KEY;
             }
 
