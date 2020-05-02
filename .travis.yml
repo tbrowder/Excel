@@ -1,13 +1,16 @@
-language: minimal
+language: generic
+env:
+  global:
+    - export PATH="/opt/rakudo-pkg/bin:/opt/rakudo-pkg/share/perl6/site/bin:$PATH"
 
-services: docker
+addons:
+  apt:
+    sources:
+      - sourceline: 'deb https://dl.bintray.com/nxadm/rakudo-pkg-debs $(lsb_release -cs) main'
+        key_url: 'http://keyserver.ubuntu.com/pks/lookup?search=0x379CE192D401AB61&op=get'
+    packages:
+      - rakudo-pkg
 
-before_install:
-- docker pull nxadm/rakudo-pkg:debian-amd64-9
-
-script:
-- docker run
-  -v $(pwd):/tmp/test:rw
-  -w /tmp/test
-  nxadm/rakudo-pkg:debian-amd64-9
-  bash -c 'apt-get update; apt-get install -y ca-certificates libperl-dev ; zef install -v --deps-only . && zef test .'
+install:
+  - zef install -v--deps-only .
+  - zef test .
