@@ -104,7 +104,6 @@ sub split-linear(@bcells, :$debug --> Array) is export {
     # the two @bcells are the bounding cells of a linear range
     die "FATAL: there should be two cells but there are {@bcells.elems}" if @bcells.elems != 2;
 
-
     # if there are two cells (one hyphen, linear range) it's easy:
     my @c;
     for @bcells -> $A1 {
@@ -174,7 +173,6 @@ sub split-linear(@bcells, :$debug --> Array) is export {
 
     my ($start-row, $start-col, $srow-abs, $scol-abs) = xl-cell-to-rowcol $start-A1;
     my ($end-row  , $end-col  , $erow-abs, $ecol-abs) = xl-cell-to-rowcol $end-A1;
-
 
     my @A1;
     if $start-row == $end-row {
@@ -255,7 +253,7 @@ sub split-rectangular(@bcells, :$debug --> Array) is export {
 
         my @bcells = $start-cell, $end-cell;
         my @a1 = split-linear @bcells, :$debug;
-        @A1.append: @a1;
+        @A1.append: @a1; # flattens and adds the individual A1 names to the array
     }
 
     return @A1;
