@@ -12,5 +12,5 @@ addons:
       - rakudo-pkg
 
 install:
-  - zef install -v--deps-only .
+  - zef install -v --deps-only .
   - zef test .
