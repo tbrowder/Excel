@@ -40,6 +40,7 @@ class Cell is export {
     submethod TWEAK {
         # initialize known hash key/value pairs
         # font info
+        =begin comment
         self.font<Name>           = '';
         self.font<Bold>           = '';
         self.font<Italic>         = '';
@@ -51,7 +52,6 @@ class Cell is export {
         self.font<Super>          = '';
 
         # format info
-        =begin comment
         self.format<Font>         = '';
         self.format<AlignH>       = '';
         self.format<AlignV>       = '';
@@ -255,10 +255,12 @@ sub write-xlsx-workbook($fnam,
     # start an empty Excel file to be written to
     my $perl-wb  = Excel::Writer::XLSX.new: $fnam;
     # apply formatting as desired
+    # another hash for format objects
+    my %perl-fmt;
     if %fmt.elems {
         # the formats are converted into format vars
         # inside the workbook for later use in cells
-        build-xlsx-formats %fmt, $perl-wb, :$debug;
+        build-xlsx-formats %fmt, $perl-wb, :%perl-fmt, :$debug;
     }
 
     # iterate through the input workbook
@@ -347,6 +349,7 @@ sub write-xlsx-workbook($fnam,
 
 sub build-xlsx-formats(%fmt,
                        $perl-wb,     #= a Perl Excel::Writer::XLSX workbook
+                       :%perl-fmt!,  #= stash format objects here keyed bu cell A1 reference
                        :$debug) {
     # The formats are converted into format vars
     # inside the workbook for later use in cells
@@ -437,7 +440,9 @@ sub build-xlsx-formats(%fmt,
     # in the border properties
     for %g.keys -> $gattr {
         my $gval = %g{$gattr};
-
+     
+   
+        # the $cell value is the "A1"
         for %e.keys -> $cell {
             for %(%e{$cell}) -> $attr {
                 note "DEBUG: cell attr type {$attr.^name}" if 0;
@@ -458,6 +463,12 @@ sub build-xlsx-formats(%fmt,
     # we now have all we need to define the formats
     for %e.keys -> $a1 {
         note "DEBUG: defining format for cell '$a1'" if $debug;
+        my $fmt = $perl-wb.add_format;
+
+        # save that object in our %perl-fmt hash
+        %perl-fmt{$a1}<perl-wb-fmt> = $fmt;
+
+        # add to the format the properties we discovered
         my %prop = %(%e{$a1});
         for %prop.keys -> $p {
             my $v = %prop{$p}.defined ?? %prop{$p} !! '';
