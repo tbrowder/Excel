@@ -105,7 +105,7 @@ sub split-ranges(%fmt, :$debug --> Hash) is export {
 
             # a cell range key: the values will be assigned to all the
             # keys in the range
-            my @ckeys = split-range @k;
+            my @ckeys = split-range @k, :$debug;
             for @ckeys -> $ck {
                 %new-fmt{$ck} = $v;
             }
@@ -131,10 +131,13 @@ sub split-linear(@bcells, :$debug --> Array) is export {
         # if we have been rigorous in our plan the alpha chars
         # should be lower-case
         my $c = C.new: :$A1;
+        if $debug {
+            note "DEBUG: linear range, cell.A1: {$c.A1}";
+        }
         @c.push: $c;
     }
 
-    my ($L, $R, $T, $B); # range end cells: left/right, top/bottom
+    my ($L, $R, $T, $B); # range end cells: left/right (row range), top/bottom (column range)
 
     enum RangeStat <IsRow IsCol>;
     my $range-type;
@@ -161,11 +164,11 @@ sub split-linear(@bcells, :$debug --> Array) is export {
     }
 
     my ($start-A1, $end-A1);
-    if IsCol {
+    if $range-type ~~ IsCol {
         $start-A1 = $T.A1;
         $end-A1   = $B.A1;
     }
-    elsif IsRow {
+    elsif $range-type ~~ IsRow {
         $start-A1 = $L.A1;
         $end-A1   = $R.A1;
     }
