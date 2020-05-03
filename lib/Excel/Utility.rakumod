@@ -111,6 +111,9 @@ sub split-ranges(%fmt, :$debug --> Hash) is export {
             }
             next KEY;
         }
+        elsif $k.contains('-') {
+            die "FATAL: Unrecognized cell grouping '$k' (hyphens only used in valid cell keys)"
+        }
         else {
             # not a cell key
             %new-fmt{$k} = $v;
@@ -222,6 +225,8 @@ sub split-linear(@bcells, :$debug --> Array) is export {
 } # end of: sub split-linear
 
 sub split-rectangular(@bcells, :$debug --> Array) is export {
+    note "DEBUG: In sub split-rectangular with input cells: @bcells[]" if $debug;
+
     # the four @bcells are the bounding cells of a rectangular range
     die "FATAL: there should be four cells but there are {@bcells.elems}" if @bcells.elems != 4;
 
@@ -246,7 +251,14 @@ sub split-rectangular(@bcells, :$debug --> Array) is export {
     }
 
     # sort the cells by row (numerically)
-    my @a = @c.sort({$^b.r cmp $^a.r});
+    my @a = @c.sort({$^a.r cmp $^b.r});
+    
+    if $debug  {
+        my @d;
+        @d.push($_.A1) for @a;
+        note "DEBUG: In sub split-rectangular with row-sorted input cell objects: @d[]";
+    }
+
 
     my ($ul, $ur, $ll, $lr);
     # the top row
@@ -265,6 +277,31 @@ sub split-rectangular(@bcells, :$debug --> Array) is export {
         ($ll, $lr) = ($lr, $ll);
     }
 
+    # check we have a rectangle
+    my $err;
+    if $ul.r !== $ur.r {
+        note "WARNING: upper-left cell {$ul.A1} row is not same as upper-right cell {$ur.A1}";
+        ++$err;
+    }
+    if $ll.r !== $lr.r {
+        note "WARNING: lower-left cell {$ll.A1} row is not same as lower-right cell {$lr.A1}";
+        ++$err;
+    }
+    if $ul.c ne $ll.c {
+        note "WARNING: upper-left cell {$ul.A1} column is not same as lower-left cell {$ll.A1}";
+        ++$err;
+    }
+    if $ur.c ne $lr.c {
+        note "WARNING: upper-right cell {$ur.A1} column is not same as lower-right cell {$lr.A1}";
+        ++$err;
+    }
+    if $err {
+        my @d;
+        @d.push($_.A1) for $ul, $ur, $ll, $lr;
+        die "FATAL: invalid rectangular range defined by cells: @d[]";
+    }
+
+
     my @A1;
     # step through each row and treat each as a linear range of
     # columns
@@ -279,6 +316,8 @@ sub split-rectangular(@bcells, :$debug --> Array) is export {
         my @a1 = split-linear @bcells, :$debug;
         @A1.append: @a1; # flattens and adds the individual A1 names to the array
     }
+
+    note "DEBUG: In sub split-rectangular with output cells: @A1[]" if $debug;
 
     return @A1;
 

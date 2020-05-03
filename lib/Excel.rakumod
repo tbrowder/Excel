@@ -273,7 +273,7 @@ sub write-xlsx-workbook($fnam,
 
         my $nrows = $raku-ws.rowcols.elems;
         my $ncols = $raku-ws.rowcols[0].elems;
-        note "DEBUG: writing $nrows rows and $ncols columns";
+        note "DEBUG: writing $nrows rows and $ncols columns" if $debug;
 
         my $perl-ws;
         if $raku-ws.name {
