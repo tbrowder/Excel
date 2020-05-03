@@ -3,9 +3,9 @@ unit class Excel::Format;
 use Excel::Utility;
 
 # font and properties
-has $.font      is rw;
-has $.underline is rw;
-has $.italic    is rw;
+has $.font       is rw;
+has $.underline  is rw;
+has $.italic     is rw;
 has $.slant      is rw;
 has $.bold       is rw;
 
@@ -47,6 +47,7 @@ fg
 bg
 italic
 slant
+underline
 >;
 
 #| known colors
