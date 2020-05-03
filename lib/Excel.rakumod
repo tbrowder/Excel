@@ -350,20 +350,19 @@ sub build-xlsx-formats(%fmt,
                        :$debug) {
     # The formats are converted into format vars
     # inside the workbook for later use in cells
-    # and returned as vars named for the cells.
+    # and returned as vars named for the cells (e.g., $D4).
     # For now, the formats are for all worksheets, but
     # could be named something like $B3-WS0 or $B3-WS'Foo for
     # specific sheets.
 
     use Excel::Writer::XLSX:from<Perl5>;
 
-    # create eval strings for each format object to be defined
-    # name them after cell, and possibly for specific worksheets
+    # cell attributes
     my %e;
     # global attributes to be applied for all %e keys
     my %g;
 
-    # format keys may be using ranges
+    # format keys may be using ranges or groups
     %fmt = split-ranges %fmt;
 
     if 0 && $debug {
@@ -373,7 +372,6 @@ sub build-xlsx-formats(%fmt,
         die "DEBUG exit";
     }
 
-    #my @keys = %fmt.keys.sort;
     KEY: for %fmt.keys.sort -> $k is copy {
         note "DEBUG-1: hjson key: '$k'" if $debug;
         my $v = %fmt{$k};
@@ -386,26 +384,8 @@ sub build-xlsx-formats(%fmt,
             }
         }
 
-        # we need to handle a range of cells in the same row or column
-        if $k ~~ /^ :i (<[A..Z]>+ <[1..9]> \d*) ['-' (<[A..Z]>+ <[1..9]> \d*) ]? $/ {
+        if $k ~~ /^ :i <cell> $/ {
             say "DEBUG: key '$k' is an 'A1' key and should have an array or string as its value" if $debug;
-            my $k1 = ~$0;
-            my $k2;
-            if defined $1 {
-                $k2 = ~$1;
-            }
-            if $debug {
-                if $k2 {
-                    note "DEBUG: range key '$k', keys: '$k1' and '$k2'";
-                }
-                else {
-                    note "DEBUG: non-range key '$k', key: '$k1'";
-                }
-
-                #note "  next key...";
-                #next KEY;
-            }
-
             # it must be an "A1" cell
             my $cell = $k;
 
@@ -424,7 +404,7 @@ sub build-xlsx-formats(%fmt,
 
             }
             elsif $v ~~ Array {
-                for $v -> $attr {
+                for @($v) -> $attr {
                     # could have a colon pair
                     if $attr ~~ /':'/ {
                         my ($a, $val) = split ':', $attr;
@@ -432,7 +412,7 @@ sub build-xlsx-formats(%fmt,
                         %e{$cell}{$a} = $val;
                     }
                     else {
-                        %e{$cell}{$attr} = Nil;
+                        %e{$cell}{$attr} = '';
                     }
                 }
             }
@@ -460,8 +440,10 @@ sub build-xlsx-formats(%fmt,
 
         for %e.keys -> $cell {
             for %(%e{$cell}) -> $attr {
-                # if it has a value we pass on
-                next if %e{$cell}{$attr}.defined;
+                note "DEBUG: cell attr type {$attr.^name}" if 0;
+                # if it has a value we pass on to the next attr
+                note "DEBUG: cell $cell has attr $attr" if 0;
+                next if %e{$cell}{$attr}; #.defined;
 
                 # check: top, bottom, left, right for linewidth
                 for "left", "right", "top", "bottom" -> $b {
@@ -472,6 +454,7 @@ sub build-xlsx-formats(%fmt,
             }
         }
     }
+
     # we now have all we need to define the formats
     for %e.keys -> $a1 {
         note "DEBUG: defining format for cell '$a1'" if $debug;
