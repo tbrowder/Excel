@@ -1,4 +1,4 @@
-/*
+/* 
 
  Define output formatting by cells as an array of strings keyed by the
  "A1" reference to cells.
@@ -41,15 +41,19 @@
    right:N
 
  Note that a range of cells in a row or column or rectangle
- can have the same format. Use this syntax for a row or column:
+ can have the same format. Use this syntax for a row or column
+ (the two end cells may be in any order as long as they are
+ in the same row or column):
 
    B1-B4 : []
 
  For cells in a rectangular group use this syntax where the four corner
- cells are specified in any order (but they must must define a proper
- rectangular range):
+ cells are specified in any order (if they aren't rectangular but valid
+ otherwise the largest rectangular range will be produced):
 
    B1-B4-A1-A4 : []
+
+ Note hyphens cannot be used in keys other than cell references.
 
  A set of cells outside a range can have the same format by
  using either spaces or commas or both to separate the cell
@@ -78,12 +82,34 @@ F2-H2 : [
     underline
 ]
 
-D1-F2-F1-D2 : [
+N1-P3-P1-N3 : [
     border:3
 ]
 
 "A1,C3" : bold
 "A6 C7" : italic
+
+# an invalid rect range
+# result is the largest rectangular range defined by the four cells
+Q1-S3-S1-Q2 : [
+    border:3
+]
+
+/*
+# an invalid linear range
+# throws an exception
+T1-U3 : [
+    border:3
+]
+*/
+
+/*
+# an invalid cell key notation
+# throws an exception
+T1-U3-T3 : [
+    border:3
+]
+*/
 
 
 
