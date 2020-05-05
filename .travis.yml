@@ -1,17 +1,13 @@
-language: generic
-env:
-  global:
-    - export PATH="/opt/rakudo-pkg/bin:/opt/rakudo-pkg/share/perl6/site/bin:$PATH"
+language: minimal
 
-addons:
-  apt:
-    sources:
-      - sourceline: 'deb https://dl.bintray.com/nxadm/rakudo-pkg-debs $(lsb_release -cs) main'
-        key_url: 'http://keyserver.ubuntu.com/pks/lookup?search=0x379CE192D401AB61&op=get'
-    packages:
-      - rakudo-pkg
-      - libperl-dev
+services: docker
 
-install:
-  - zef install -v --deps-only .
-  - zef test .
+before_install:
+- docker pull tonyodell/rakudo-nightly:latest
+
+script:
+- docker run
+  -v $(pwd):/tmp/test:rw
+  -w /tmp/test
+  tonyodell/rakudo-nightly:latest
+  bash -c 'apt-get update; apt-get install -y ca-certificates libperl-dev; zef install -v --deps-only . && zef test .'
