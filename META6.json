@@ -6,6 +6,7 @@
     ],
     "build-depends" : [ ],
     "depends" : [
+        "Data::Dump::Tree",
         "JSON::Hjson",
         "Inline::Perl5"
     ],
