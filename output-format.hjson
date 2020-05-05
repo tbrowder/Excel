@@ -3,6 +3,21 @@
  Define output formatting by cells as an array of strings keyed by the
  "A1" reference to cells.
 
+ This input file format is in valid Hjson with the following two constructs:
+
+ 1. key : value
+
+    where KEY and VALUE are either a string without spaces or a double-quoted string
+
+ 2. key : [
+      value1
+      value2
+    ]
+
+    where KEY is as above and the values are strings without spaces and MUST be on
+    a line with no other text. The values are an array owned by the KEY.
+    See the grammar in module JSON::Hjsn for excruciating details!
+
  NOTES:
 
  All input text is case-insensitive and is downcased upon reading the
@@ -13,14 +28,13 @@
 
  Currently recognized formatting inputs are:
 
- Text attributes:
+ Text attributes (also known as "properties"):
 
    L            - left justify
    C            - center
    R            - right justify
    bold
    italic
-   slant
    underline
    color:Name - foreground (font) color
    color:#RGB
@@ -32,11 +46,11 @@
 
  Cell borders:
 
- The ':N' is an optional ending to define a specific linewidth. If no
+ The ':N' is an optional ending to define a specific border style index. If no
  value is specified, the Excel default is used or the user's default
  if it is specified.
 
-   linewidth:N  - the user's default linewidth
+   border:N  - the user's default border style
    top:N
    bottom:N
    left:N

@@ -257,6 +257,9 @@ sub write-xlsx-workbook($fnam,
     # apply formatting as desired
     # another hash for format objects
     my %perl-fmt;
+
+    # handle the input format data
+
     if %fmt.elems {
         # the formats are converted into format vars
         # inside the workbook for later use in cells
@@ -298,45 +301,8 @@ sub write-xlsx-workbook($fnam,
 
                 # get the A1 name of the cell and its format, if any
                 my $A1 = $cell.A1;
-                my $format = %fmt{$A1}:exists && %fmt{$A1}.defined ?? %fmt{$A1} !! '';
+                my $format = %perl-fmt{$A1}:exists && %perl-fmt{$A1} ?? %perl-fmt{$A1} !! '';
                 $cell.write-xlsx-cell: $perl-ws, $format;
-
-                =begin comment
-                if !$cell {
-                    $ws.write_blank: $i, $j;
-                    next COL;
-                }
-                if !$ws {
-                    die "Unexpected null Worksheek";
-                }
-
-                my $equat = $cell.formula     // '';
-                my $value = $cell.value       // '';
-                my $unfmt = $cell.unformatted // '';
-
-                if $debug {
-                    note "DEBUG: cell[$i][$j] is a Cell object";
-                    note "    value       = '$value'";
-                    note "    unformatted = '$unfmt'";
-                    note "    formula     = '$equat'";
-                }
-
-                # now write to the real spreadsheet
-                if $equat {
-                    # we need A1 row/col ID
-                    my $A1 = xl-rowcol-to-cell($i, $j);    # C2                $ws.write: $i, $j, $equat;
-                    $ws.write_formula: $A1, $equat;
-                }
-                elsif $value {
-                    $ws.write_string: $i, $j, $value;
-                }
-                elsif $unfmt {
-                    $ws.write: $i, $j, $unfmt;
-                }
-                else {
-                    $ws.write_blank: $i, $j;
-                }
-                =end comment
 
             } # end cell
         } # end row
@@ -349,7 +315,7 @@ sub write-xlsx-workbook($fnam,
 
 sub build-xlsx-formats(%fmt,
                        $perl-wb,     #= a Perl Excel::Writer::XLSX workbook
-                       :%perl-fmt!,  #= stash format objects here keyed bu cell A1 reference
+                       :%perl-fmt!,  #= stash format objects here keyed by cell A1 reference
                        :$debug) {
     # The formats are converted into format vars
     # inside the workbook for later use in cells
@@ -440,8 +406,8 @@ sub build-xlsx-formats(%fmt,
     # in the border properties
     for %g.keys -> $gattr {
         my $gval = %g{$gattr};
-     
-   
+
+
         # the $cell value is the "A1"
         for %e.keys -> $cell {
             for %(%e{$cell}) -> $attr {
@@ -463,16 +429,18 @@ sub build-xlsx-formats(%fmt,
     # we now have all we need to define the formats
     for %e.keys -> $a1 {
         note "DEBUG: defining format for cell '$a1'" if $debug;
-        my $fmt = $perl-wb.add_format;
+        my $format = $perl-wb.add_format;
 
         # save that object in our %perl-fmt hash
-        %perl-fmt{$a1}<perl-wb-fmt> = $fmt;
+        %perl-fmt{$a1}<perl-wb-fmt> = $format;
 
         # add to the format the properties we discovered
         my %prop = %(%e{$a1});
         for %prop.keys -> $p {
             my $v = %prop{$p}.defined ?? %prop{$p} !! '';
             given $p {
+                note "DEBUG: handling property: $p";
+                # border properties: 0-13
                 when /border/ {
                 }
                 when /top/ {
@@ -483,28 +451,63 @@ sub build-xlsx-formats(%fmt,
                 }
                 when /right/ {
                 }
-                when /bold/ {
+                when /border_color/ {
                 }
-                when /italic/ {
+                when /bottom_color/ {
                 }
+                when /top_color/ {
+                }
+                when /left_color/ {
+                }
+                when /right_color/ {
+                }
+
+                # font properties
+                =begin comment
                 when /font/ {
-                }
-                when /color/ {
-                }
-                when /linewidth/ {
+                    # TODO this causes coredump:
+                    my $f = 'Courier';
+                    #note "DEBUG: 'set_font' value: '$f'";
+                    #note "DEBUG: 'set_font' value: '$v'";
+                    #$format.set_font: $v;
+                    #$format.set_font: $f;
                 }
                 when /size/ {
+                    # TODO this causes coredump:
+                    #note "DEBUG: 'set_size' value: $v";
+                    #$format.set_size: $v;
+                }
+                when /bold/ {
+                    $format.set_bold;
+                }
+                when /italic/ {
+                    $format.set_italic;
+                }
+                when /underline/ {
+                    $format.set_underline;
+                }
+                when /color/ {
+                    $format.set_color: $v;
+                }
+                when /linewidth/ {
+                    $format.set_linewidth: $v;
                 }
                 when /^l$/ {
+                    $format.set_align: "left";
                 }
                 when /^c$/ {
+                    $format.set_align: "center";
                 }
                 when /^r$/ {
+                    $format.set_align: "right";
                 }
                 when /^fg$/ {
+                    $format.set_fg_color: $v;
                 }
                 when /^bg$/ {
+                    $format.set_bg_color: $v;
                 }
+                =end comment
             } # end of given block
 
         }

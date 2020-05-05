@@ -14,6 +14,7 @@ our token rect-range is export { <cell> '-' <cell> '-' <cell> '-' <cell> } # thr
 our token cell-group is export { <cell> [ <[,\s]>+ <cell> ]+ }             # a group of two or more cells
 
 # a utility class for local use
+# TODO: combine with class Cell?
 class C {
     has Str $.A1; # is rw; # A1..ZZZ999 # MaxColsMaxRows
     # use these for sorting:
