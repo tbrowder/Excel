@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: |
           # install and test if need be (includes [test-depends])
-          bash -c "aptitude install libperl-dev"
+          aptitude install libperl-dev
           zef install .
           #zef install --/test --deps-only .
           zef install --/test App::Prove6
