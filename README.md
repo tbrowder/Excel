@@ -41,6 +41,7 @@ be installed for the distro to work (I use `cpanm` for that):
 
     + `Excel::Writer::XLSX`      # write files
     + `Spreadsheet::ParseXLSX`   # read files
+    + Spreadsheet::Reader::ExcelXML # read files
 
 ## LIMITATIONS
 
