@@ -37,12 +37,14 @@ Currently working code is in the "dev" directory.
 The project uses several Perl modules which will have to
 be installed for the distro to work (I use `cpanm` for that):
 
-+ Perl modules required:
+### Perl modules required:
 
-    + `Excel::Writer::XLSX`      # write files
-    + `Spreadsheet::ParseXLSX`   # read files
-    + `Spreadsheet::Read`        # read files
-    + `Spreadsheet::Reader::ExcelXML`        # read files
+| Name | Purpose |
+| --- | --- |
+| `Excel::Writer::XLSX`           | write files
+| `Spreadsheet::ParseXLSX`        | read files
+| `Spreadsheet::Read`             | read files
+| `Spreadsheet::Reader::ExcelXML` | read files
 
 ## LIMITATIONS
 
@@ -129,7 +131,7 @@ Tom Browder, `<tom.browder@gmail.com>` (`tbrowder` on IRC `#raku`)
 COPYRIGHT & LICENSE
 ===================
 
-Copyright (c) 2020 Tom Browder, all rights reserved.
+Copyright &#x00A9; 2020 Tom Browder, all rights reserved.
 
 This program is free software; you can redistribute it or modify
 it under the same terms as Raku itself.
