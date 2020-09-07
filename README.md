@@ -37,12 +37,14 @@ Currently working code is in the "dev" directory.
 The project uses several Perl modules which will have to
 be installed for the distro to work (I use `cpanm` for that):
 
-+ Perl modules required:
+### Perl modules required:
 
-    + `Excel::Writer::XLSX`      # write files
-    + `Spreadsheet::ParseXLSX`   # read files
-    + `Spreadsheet::Read`        # read files
-    + `Spreadsheet::Reader::ExcelXML`        # read files
+| Name | Purpose |
+| --- | --- |
+| `Excel::Writer::XLSX`           | write files
+| `Spreadsheet::ParseXLSX`        | read files
+| `Spreadsheet::Read`             | read files
+| `Spreadsheet::Reader::ExcelXML` | read files
 
 ## LIMITATIONS
 
