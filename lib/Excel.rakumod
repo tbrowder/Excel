@@ -1,7 +1,7 @@
 unit module Excel;
 
 use JSON::Hjson;
-use Data::Dump::Tree;
+#use Data::Dump::Tree;
 
 use Excel::Format;
 use Excel::Utility;
