@@ -1,29 +1,29 @@
 {
-    "auth" : "github:tbrowder",
-    "version" : "0.0.2",
-    "authors" : [
-        "Tom Browder"
-    ],
-    "build-depends" : [ ],
-    "depends" : [
-        "Data::Dump::Tree",
-        "JSON::Hjson",
-        "Inline::Perl5"
-    ],
-    "description" : "Provides ability to work with Excel workbooks",
-    "license" : "Artistic-2.0",
-    "name" : "Excel",
-    "perl" : "6*",
-    "provides" : {
-        "Excel"          : "lib/Excel.rakumod",
-        "Excel::Misc"    : "lib/Excel/Misc.rakumod",
-        "Excel::Utility" : "lib/Excel/Utility.rakumod",
-        "Excel::Format"  : "lib/Excel/Format.rakumod"
-    },
-    "resources" : [ ],
-    "source-url" : "https://github.com/tbrowder/Excel-Raku.git",
-    "tags" : [ ],
-    "test-depends" : [
-        "Test::META"
-    ]
+  "auth" : "github:tbrowder",
+  "authors" : [
+    "Tom Browder"
+  ],
+  "build-depends" : [ ],
+  "depends" : [
+    "Data::Dump::Tree",
+    "JSON::Hjson",
+    "Inline::Perl5"
+  ],
+  "description" : "Provides ability to work with Excel workbooks",
+  "license" : "Artistic-2.0",
+  "name" : "Excel",
+  "perl" : "6*",
+  "provides" : {
+    "Excel" : "lib/Excel.rakumod",
+    "Excel::Format" : "lib/Excel/Format.rakumod",
+    "Excel::Misc" : "lib/Excel/Misc.rakumod",
+    "Excel::Utility" : "lib/Excel/Utility.rakumod"
+  },
+  "resources" : [ ],
+  "source-url" : "https://github.com/tbrowder/Excel-Raku.git",
+  "tags" : [ ],
+  "test-depends" : [
+    "Test::META"
+  ],
+  "version" : "0.0.2"
 }
