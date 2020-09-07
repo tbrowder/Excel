@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/tbrowder/Excel-Raku.svg?branch=master)](https://travis-ci.com/tbrowder/Excel-Raku)
+[![Actions Status](https://github.com/tbrowder/Excel/workflows/test/badge.svg)](https://github.com/tbrowder/Excel/actions)
 
 # Excel
 
