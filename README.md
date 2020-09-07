@@ -131,7 +131,7 @@ Tom Browder, `<tom.browder@gmail.com>` (`tbrowder` on IRC `#raku`)
 COPYRIGHT & LICENSE
 ===================
 
-Copyright (c) 2020 Tom Browder, all rights reserved.
+Copyright &#x00A9; 2020 Tom Browder, all rights reserved.
 
 This program is free software; you can redistribute it or modify
 it under the same terms as Raku itself.
