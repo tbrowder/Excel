@@ -336,7 +336,7 @@ sub build-xlsx-formats(%fmt,
 
     if 0 && $debug {
         for %fmt.keys -> $k {
-            ddt %fmt{$k};
+            #ddt %fmt{$k};
         }
         die "DEBUG exit";
     }
