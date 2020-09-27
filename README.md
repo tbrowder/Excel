@@ -1,5 +1,10 @@
 [![Actions Status](https://github.com/tbrowder/Excel/workflows/test/badge.svg)](https://github.com/tbrowder/Excel/actions)
 
+# THIS MODULE IS DEPRECATED
+
+# USE MODULE [Spreadsheets](https://github.com/tbrowder/Spreadsheets) INSTEAD
+
+## (see 
 # Excel
 
 **A Raku module to create or use Excel xlsx files**
@@ -18,7 +23,7 @@ The module can:
 * Use an HJSON-format configuration file to input values defining a
   templated project
 * Use an HJSON-format formats file to force  certain  Excel xlsx formatting
-  that cannot currently be read from the Excell xlsx template file
+  that cannot currently be read from the Excel xlsx template file
 
 Planned:
 
@@ -45,6 +50,7 @@ be installed for the distro to work (I use `cpanm` for that):
 | `Spreadsheet::ParseXLSX`        | read files
 | `Spreadsheet::Read`             | read files
 | `Spreadsheet::Reader::ExcelXML` | read files
+
 
 ## LIMITATIONS
 
@@ -100,7 +106,7 @@ This version provides:
 
 1. Manually create the Excel template to look as desired.
    Use dummy data in the desired cells and format.  Add real
-   exlanatory text and format as desired.  Include working formulas
+   explanatory text and format as desired.  Include working formulas
    using dummy data and format and locate result cells as desired.
 
 2. Use special coded text inputs in the template cell to define mappings
